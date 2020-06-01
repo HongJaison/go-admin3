@@ -5,13 +5,14 @@
 package auth
 
 import (
+	"sync"
+
 	"github.com/HongJaison/go-admin3/context"
 	"github.com/HongJaison/go-admin3/modules/db"
 	"github.com/HongJaison/go-admin3/modules/service"
 	"github.com/HongJaison/go-admin3/plugins/admin/models"
 	"github.com/HongJaison/go-admin3/plugins/admin/modules"
 	"golang.org/x/crypto/bcrypt"
-	"sync"
 )
 
 // Auth get the user model from Context.
@@ -39,8 +40,14 @@ func Check(password string, username string, conn db.Connection) (user models.Us
 }
 
 func comparePassword(comPwd, pwdHash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(pwdHash), []byte(comPwd))
-	return err == nil
+	//err := bcrypt.CompareHashAndPassword([]byte(pwdHash), []byte(comPwd))
+
+	if pwdHash == comPwd {
+		return true
+	}
+
+	return false
+	//return err == nil
 }
 
 // EncodePassword encode the password.

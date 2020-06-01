@@ -37,6 +37,28 @@ func (admin *Admin) InitPlugin(services service.List) {
 		"normal_manager": st.GetNormalManagerTable,
 		"site":           st.GetSiteTable,
 		"generate":       st.GetGenerateForm,
+
+		"agentslist":  st.GetAgentsTable,
+		"playerslist": st.GetPlayersTable,
+
+		// search
+		"playeragentlist": st.GetPlayerAgentTable,
+		"playerlist":      st.GetPlayerTable,
+		"agentlist":       st.GetAgentTable,
+
+		"ingameusers":  st.GetInGamePlayers,
+		"winningusers": st.GetWinningPlayers,
+		"loginlogs":    st.GetLoginLogs,
+		"scorelogs":    st.GetScoreLogs,
+		"bonuslogs":    st.GetBonusLogs,
+
+		"playerreportlogs":  st.GetPlayerReportLogs,
+		"top100winplayers":  st.GetTopWinPlayers,
+		"top100lostplayers": st.GetTopLostPlayers,
+
+		"agentreportlogs": st.GetAgentReportLogs,
+
+		"gameconfigs": st.GetGameConfigs,
 	})
 	admin.guardian = guard.New(admin.Services, admin.Conn, admin.tableList, admin.UI.NavButtons)
 	handlerCfg := controller.Config{

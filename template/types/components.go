@@ -5,10 +5,11 @@
 package types
 
 import (
+	"html/template"
+
 	"github.com/HongJaison/go-admin3/modules/menu"
 	"github.com/HongJaison/go-admin3/plugins/admin/modules"
 	"github.com/HongJaison/go-admin3/template/types/form"
-	"html/template"
 )
 
 type FormAttribute interface {
@@ -37,6 +38,11 @@ type FormAttribute interface {
 }
 
 type BoxAttribute interface {
+	// added by jaison
+	SetParentInput(value string) BoxAttribute
+	SetOverlayLoad(value string) BoxAttribute
+	SetMessage(value string) BoxAttribute
+
 	SetHeader(value template.HTML) BoxAttribute
 	SetBody(value template.HTML) BoxAttribute
 	SetNoPadding() BoxAttribute
@@ -102,6 +108,9 @@ type ButtonAttribute interface {
 }
 
 type TableAttribute interface {
+	// added by jaison
+	SetTableID(value string) TableAttribute
+
 	SetThead(value Thead) TableAttribute
 	SetInfoList(value []map[string]InfoItem) TableAttribute
 	SetType(value string) TableAttribute
@@ -113,6 +122,9 @@ type TableAttribute interface {
 }
 
 type DataTableAttribute interface {
+	// added by jaison
+	SetTableID(value string) DataTableAttribute
+
 	GetDataTableHeader() template.HTML
 	SetThead(value Thead) DataTableAttribute
 	SetInfoList(value []map[string]InfoItem) DataTableAttribute
@@ -123,7 +135,7 @@ type DataTableAttribute interface {
 	SetStyle(style string) DataTableAttribute
 	SetAction(action template.HTML) DataTableAttribute
 	SetIsTab(value bool) DataTableAttribute
-	SetHideThead() DataTableAttribute
+	SetHideThead(value bool) DataTableAttribute
 	SetLayout(value string) DataTableAttribute
 	SetButtons(btns template.HTML) DataTableAttribute
 	SetHideFilterArea(value bool) DataTableAttribute

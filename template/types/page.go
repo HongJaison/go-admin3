@@ -7,14 +7,15 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"html/template"
+	"strconv"
+
 	"github.com/HongJaison/go-admin3/context"
 	"github.com/HongJaison/go-admin3/modules/config"
 	"github.com/HongJaison/go-admin3/modules/menu"
 	"github.com/HongJaison/go-admin3/modules/system"
 	"github.com/HongJaison/go-admin3/modules/utils"
 	"github.com/HongJaison/go-admin3/plugins/admin/models"
-	"html/template"
-	"strconv"
 )
 
 // Attribute is the component interface of template. Every component of
@@ -219,12 +220,17 @@ func (p Panel) GetContent(params ...bool) Panel {
 		prod = params[0]
 	}
 
-	animation := template.HTML("")
+	// commented by jaison
+	// animation := template.HTML("")
+
 	style := template.HTML("")
 	remove := template.HTML("")
 	ani := config.GetAnimation()
 	if ani.Type != "" && (len(params) < 2 || params[1]) {
-		animation = template.HTML(` class='pjax-container-content animated ` + ani.Type + `'`)
+
+		// commented by jaison
+		// animation = template.HTML(` class='pjax-container-content animated ` + ani.Type + `'`)
+
 		if ani.Delay != 0 {
 			style = template.HTML(fmt.Sprintf(`animation-delay: %fs;-webkit-animation-delay: %fs;`, ani.Delay, ani.Delay))
 		}
@@ -242,7 +248,10 @@ func (p Panel) GetContent(params ...bool) Panel {
 		</script>`)
 	}
 
-	p.Content = `<div` + animation + style + ">" + p.Content + "</div>" + remove
+	// modified by jaison
+	// p.Content = `<div` + animation + style + ">" + p.Content + "</div>" + remove
+	p.Content = p.Content + remove
+
 	if p.MiniSidebar {
 		p.Content += `<script>$("body").addClass("sidebar-collapse")</script>`
 	}

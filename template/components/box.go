@@ -2,11 +2,17 @@ package components
 
 import (
 	"fmt"
-	"github.com/HongJaison/go-admin3/template/types"
 	"html/template"
+
+	"github.com/HongJaison/go-admin3/template/types"
 )
 
 type BoxAttribute struct {
+	// added by jaison
+	ParentId  string
+	OverlayId string
+	Message   string
+
 	Name              string
 	Header            template.HTML
 	Body              template.HTML
@@ -23,6 +29,24 @@ type BoxAttribute struct {
 	Style             template.HTMLAttr
 	Padding           string
 	types.Attribute
+}
+
+// added by jaison
+func (compo *BoxAttribute) SetParentInput(value string) types.BoxAttribute {
+	compo.ParentId = value
+	return compo
+}
+
+// added by jaison
+func (compo *BoxAttribute) SetOverlayLoad(value string) types.BoxAttribute {
+	compo.OverlayId = value
+	return compo
+}
+
+// added by jaison
+func (compo *BoxAttribute) SetMessage(value string) types.BoxAttribute {
+	compo.Message = value
+	return compo
 }
 
 func (compo *BoxAttribute) SetTheme(value string) types.BoxAttribute {

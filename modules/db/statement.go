@@ -678,3 +678,23 @@ func RecycleSQL(sql *SQL) {
 
 	SQLPool.Put(sql)
 }
+
+// added by jaison
+func (sql *SQL) RawQuery(query string) ([]map[string]interface{}, error) {
+	defer RecycleSQL(sql)
+	fmt.Println(query)
+
+	sql.dialect.Select(&sql.SQLComponent)
+
+	res, err := sql.diver.Query(query, "")
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(res) < 1 {
+		return nil, errors.New("out of index")
+	}
+
+	return res, nil
+}

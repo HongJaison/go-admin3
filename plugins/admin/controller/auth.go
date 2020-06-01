@@ -2,6 +2,10 @@ package controller
 
 import (
 	"bytes"
+	template2 "html/template"
+	"net/http"
+	"net/url"
+
 	"github.com/HongJaison/go-admin3/context"
 	"github.com/HongJaison/go-admin3/modules/auth"
 	"github.com/HongJaison/go-admin3/modules/config"
@@ -13,9 +17,6 @@ import (
 	"github.com/HongJaison/go-admin3/plugins/admin/modules/response"
 	"github.com/HongJaison/go-admin3/template"
 	"github.com/HongJaison/go-admin3/template/types"
-	template2 "html/template"
-	"net/http"
-	"net/url"
 )
 
 // Auth check the input password and username for authentication.

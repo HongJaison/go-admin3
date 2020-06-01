@@ -1,6 +1,8 @@
 package datamodel
 
 import (
+	"html/template"
+
 	"github.com/HongJaison/go-admin3/context"
 	tmpl "github.com/HongJaison/go-admin3/template"
 	"github.com/HongJaison/go-admin3/template/chartjs"
@@ -12,12 +14,10 @@ import (
 	"github.com/HongJaison/themes3/adminlte/components/productlist"
 	"github.com/HongJaison/themes3/adminlte/components/progress_group"
 	"github.com/HongJaison/themes3/adminlte/components/smallbox"
-	"html/template"
 )
 
 // GetContent return the content of index page.
 func GetContent(ctx *context.Context) (types.Panel, error) {
-
 	components := tmpl.Default()
 	colComp := components.Col()
 

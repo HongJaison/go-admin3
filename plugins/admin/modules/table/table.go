@@ -1,6 +1,10 @@
 package table
 
 import (
+	"html/template"
+	"sync"
+	"sync/atomic"
+
 	"github.com/HongJaison/go-admin3/context"
 	"github.com/HongJaison/go-admin3/modules/db"
 	"github.com/HongJaison/go-admin3/modules/service"
@@ -8,9 +12,6 @@ import (
 	"github.com/HongJaison/go-admin3/plugins/admin/modules/paginator"
 	"github.com/HongJaison/go-admin3/plugins/admin/modules/parameter"
 	"github.com/HongJaison/go-admin3/template/types"
-	"html/template"
-	"sync"
-	"sync/atomic"
 )
 
 type Generator func(ctx *context.Context) Table
@@ -42,6 +43,11 @@ func (g GeneratorList) CombineAll(gens []GeneratorList) GeneratorList {
 }
 
 type Table interface {
+	// added by jaison
+	GetLoadFinishedCallBack() func(values ...interface{})
+	SetLoadFinishedCallBack(func(values ...interface{}))
+	GetDataWithRawQuery(query string, params parameter.Parameters) (PanelInfo, error)
+
 	GetInfo() *types.InfoPanel
 	GetDetail() *types.InfoPanel
 	GetDetailFromInfo() *types.InfoPanel
@@ -72,6 +78,9 @@ type Table interface {
 }
 
 type BaseTable struct {
+	// added by jaison
+	LoadFinishedCallBack func(values ...interface{})
+
 	Info           *types.InfoPanel
 	Form           *types.FormPanel
 	Detail         *types.InfoPanel
@@ -84,6 +93,16 @@ type BaseTable struct {
 	OnlyNewForm    bool
 	OnlyUpdateForm bool
 	PrimaryKey     PrimaryKey
+}
+
+// added by jaison
+func (base *BaseTable) GetLoadFinishedCallBack() func(values ...interface{}) {
+	return base.LoadFinishedCallBack
+}
+
+// added by jaison
+func (base *BaseTable) SetLoadFinishedCallBack(value func(values ...interface{})) {
+	base.LoadFinishedCallBack = value
 }
 
 func (base *BaseTable) GetInfo() *types.InfoPanel {

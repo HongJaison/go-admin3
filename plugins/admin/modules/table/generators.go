@@ -4,14 +4,17 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/HongJaison/go-admin3/modules/ui"
-	"github.com/HongJaison/go-admin3/plugins/admin/modules/tools"
 	tmpl "html/template"
+	"math"
 	"net/url"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/HongJaison/go-admin3/modules/ui"
+	"github.com/HongJaison/go-admin3/plugins/admin/modules/tools"
 
 	"github.com/HongJaison/go-admin3/context"
 	"github.com/HongJaison/go-admin3/modules/collection"
@@ -41,6 +44,1564 @@ type SystemTable struct {
 
 func NewSystemTable(conn db.Connection, c *config.Config) *SystemTable {
 	return &SystemTable{conn: conn, c: c}
+}
+
+// added by jaison
+func (s *SystemTable) GetAgentsTable(ctx *context.Context) (agentTable Table) {
+	fmt.Println("plugins.modules.table.generator.go GetAgentTable")
+
+	agentTableConfig := DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver)
+
+	agentTable = NewDefaultTable(agentTableConfig)
+
+	info := agentTable.GetInfo().AddXssJsFilter().HideFilterArea()
+
+	info.SetSortAsc()
+
+	info.AddField("#", "id", db.Int)
+	info.AddField(lg("UserName"), "username", db.Varchar)
+	info.AddField(lg("Name"), "name", db.Varchar)
+	info.AddField(lg("Score"), "score", db.Decimal)
+	info.AddField(lg("Operation"), "state", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			buttons := template.HTML(`<td id="op2_0" class="text-left">`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/Agent/EditScore?id=` + model.ID + `'">set score</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/ScoreLog/SearchScoreLog?sid=` + model.ID + `'">score log</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/Agent/Edit?id=` + model.ID + `'">edit</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/Report/Search?sid=` + model.ID + `'">report</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/Report/Chart?sid=` + model.ID + `'">chart</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/BonusLog/SetBonus?sid=` + model.ID + `'">set bonus</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/BonusLog/SearchBonusLog?sid=` + model.ID + `'">bonus log</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/RedPacketLog/SetRedPacket?sid=` + model.ID + `'">set redpacket</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/RedPacketLog/SearchRedPacketLog?sid=` + model.ID + `'">redpacket log</button>`)
+
+			if model.Row[`state`] == 1 {
+				buttons += template.HTML(`<button type="button" name="agentable" title="` + model.Row[`username`].(string) + `" rel="disable" player="` + model.ID + `" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="">disable</button>`)
+			} else {
+				buttons += template.HTML(`<button type="button" name="agentable" title="` + model.Row[`username`].(string) + `" rel="disable" player="` + model.ID + `" class="btn btn-danger btn-xs" onfocus="this.blur();" onclick="">enable</button>`)
+			}
+
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/Agent/SetAgentLoginIP?agentid=` + model.ID + `'">agent login ip</button>`)
+			buttons += template.HTML(`<button type="button" name="closeonlineagent" title="` + model.Row[`username`].(string) + `" rel="closeonlineagent" player="` + model.ID + `" class="btn btn-danger btn-xs" onfocus="this.blur();" onclick="">closeonline</button>`)
+			buttons += template.HTML(`<button type="button" name="closeonlineagentall" title="` + model.Row[`username`].(string) + `" rel="closeonlineagentall" player="` + model.ID + `" class="btn btn-yahoo btn-xs" onfocus="this.blur();" onclick="">closeonlineforall</button>`)
+
+			buttons += template.HTML(`</td>`)
+			return buttons
+		})
+
+	info.HideDeleteButton()
+	info.HideExportButton()
+
+	info.HideNewButton()
+	info.HideFilterButton()
+	info.HideRowSelector()
+	info.HideEditButton()
+	info.HideDetailButton()
+
+	info.SetTable("Agents").
+		SetTitle("Agent List").
+		SetDescription("").
+		SetHeaderHtml(template.HTML(`
+			<h6 class="box-title" id="d_tip_1" style="font-size:0.9em;">
+				<span class="badge bg-red hidden-xs hidden-sm">My agent list</span>
+				<span class="hidden-xs hidden-sm">　｜　</span>
+				<a class="hidden-xs hidden-sm" name="create" href="javascript:;" onclick="checkStateAgent();" target="_self">AddAgent</a>
+				<span class="hidden-xs hidden-sm">　｜　</span>
+				<a class="hidden-xs hidden-sm" href="/Report/Search?action=TotalAgent&parentId=@ViewBag.parentId" target="_self">Agent total report</a>
+				<span class="hidden-xs hidden-sm">　｜　</span>
+				<a class="hidden-xs hidden-sm" href="###" name="reload_all_agents" onclick="javascript:reloadAgentList();" target="_self">Reload agentList</a>
+				<span class="hidden-xs hidden-sm">　｜　</span>
+				<a class="hidden-xs hidden-sm" href="/BonusLog/SearchBonusLogTotal" name="totalBonusLog" onclick="" target="_self">Total Bonus Log</a>
+				<span class="hidden-xs hidden-sm">　｜　</span>
+				<a class="hidden-xs hidden-sm" href="/RedPacketLog/SearchRedPacketLogTotal" name="totalRedPacketLog" onclick="" target="_self">Total RedPacket Log</a>
+				<span class="hidden-xs hidden-sm">　｜　</span>
+				<a class="hidden-xs hidden-sm" href="/SubAccount/Index?parentId=@ViewBag.parentId" target="_self">SubAccount List</a>
+				<div class="margin visible-xs visible-sm">
+					<div class="btn-group">
+						<button class="btn btn-default btn-flat" type="button">AgentList Menu</button>
+						<button data-toggle="dropdown" class="btn btn-default btn-flat dropdown-toggle" type="button">
+							<span class="caret"></span>
+							<span class="sr-only">Toggle Dropdown</span>
+						</button>
+						<ul role="menu" class="dropdown-menu">
+							<li>
+								<a name="create" href="javascript:;" onclick="checkStateAgent();" target="_self">
+									<span class="text-bold"><i class="fa fa-angle-right"></i> AddAgent</span>
+								</a>
+							</li>
+							<li class="divider"></li>
+							<li>
+								<a href="/Report/Search?action=TotalAgent&parentId=@ViewBag.parentId" target="_self">
+									<span class="text-bold"><i class="fa fa-angle-right"></i> Agent total report</span>
+								</a>
+							</li>
+							<li class="divider"></li>
+							<li>
+								<a href="###" onclick="javascript:reloadAgentList();" name="reload_all_agents" target="_self">
+									<span class="text-bold"><i class="fa fa-angle-right"></i> Reload agentList</span>
+								</a>
+							</li>
+							<li class="divider"></li>
+							<li>
+								<a href="/BonusLog/SearchBonusLogTotal" onclick="" name="totalBonusLog" target="_self">
+									<span class="text-bold"><i class="fa fa-angle-right"></i> Total Bonus Log</span>
+								</a>
+							</li>
+							<li class="divider"></li>
+							<li>
+								<a href="/RedPacketLog/SearchRedPacketLogTotal" onclick="" name="totalRedPacketLog" target="_self">
+									<span class="text-bold"><i class="fa fa-angle-right"></i> Total RedPacket Log</span>
+								</a>
+							</li>
+							<li class="divider"></li>
+							<li>
+								<a href="/SubAccount/Index?parentId=@ViewBag.parentId" onclick="" name="subaccount" target="_self">
+									<span class="text-bold"><i class="fa fa-angle-right"></i> SubAccount List</span>
+								</a>
+							</li>
+
+						</ul>
+					</div>
+				</div>
+			</h6>
+			<div class="box-tools pull-right">
+				<button data-widget="collapse" class="btn btn-box-tool" type="button"><i class="fa fa-minus"></i></button>
+			</div>`))
+
+	countryOptions := types.FieldOptions{
+		{Value: "ANY", Text: "Any"},
+		{Value: "AF", Text: "Afghanistan"},
+		{Value: "AL", Text: "Albania"},
+		{Value: "DZ", Text: "Algeria"},
+		{Value: "AS", Text: "American Samoa"},
+		{Value: "AD", Text: "Andorra"},
+		{Value: "AG", Text: "Angola"},
+		{Value: "AI", Text: "Anguilla"},
+		{Value: "AG", Text: "Antigua &amp; Barbuda"},
+		{Value: "AR", Text: "Argentina"},
+		{Value: "AA", Text: "Armenia"},
+		{Value: "AW", Text: "Aruba"},
+		{Value: "AU", Text: "Australia"},
+		{Value: "AT", Text: "Austria"},
+		{Value: "AZ", Text: "Azerbaijan"},
+		{Value: "BS", Text: "Bahamas"},
+		{Value: "BH", Text: "Bahrain"},
+		{Value: "BD", Text: "Bangladesh"},
+		{Value: "BB", Text: "Barbados"},
+		{Value: "BY", Text: "Belarus"},
+		{Value: "BE", Text: "Belgium"},
+		{Value: "BZ", Text: "Belize"},
+		{Value: "BJ", Text: "Benin"},
+		{Value: "BM", Text: "Bermuda"},
+		{Value: "BT", Text: "Bhutan"},
+		{Value: "BO", Text: "Bolivia"},
+		{Value: "BL", Text: "Bonaire"},
+		{Value: "BA", Text: "Bosnia &amp; Herzegovina"},
+		{Value: "BW", Text: "Botswana"},
+		{Value: "BR", Text: "Brazil"},
+		{Value: "BC", Text: "British Indian Ocean Ter"},
+		{Value: "BN", Text: "Brunei"},
+		{Value: "BG", Text: "Bulgaria"},
+		{Value: "BF", Text: "Burkina Faso"},
+		{Value: "BI", Text: "Burundi"},
+		{Value: "KH", Text: "Cambodia"},
+		{Value: "CM", Text: "Cameroon"},
+		{Value: "CA", Text: "Canada"},
+		{Value: "IC", Text: "Canary Islands"},
+		{Value: "CV", Text: "Cape Verde"},
+		{Value: "KY", Text: "Cayman Islands"},
+		{Value: "CF", Text: "Central African Republic"},
+		{Value: "TD", Text: "Chad"},
+		{Value: "CD", Text: "Channel Islands"},
+		{Value: "CL", Text: "Chile"},
+		{Value: "CN", Text: "China"},
+		{Value: "CI", Text: "Christmas Island"},
+		{Value: "CS", Text: "Cocos Island"},
+		{Value: "CO", Text: "Colombia"},
+		{Value: "CC", Text: "Comoros"},
+		{Value: "CG", Text: "Congo"},
+		{Value: "CK", Text: "Cook Islands"},
+		{Value: "CR", Text: "Costa Rica"},
+		{Value: "CT", Text: "Cote D'Ivoire"},
+		{Value: "HR", Text: "Croatia"},
+		{Value: "CU", Text: "Cuba"},
+		{Value: "CB", Text: "Curacao"},
+		{Value: "CY", Text: "Cyprus"},
+		{Value: "CZ", Text: "Czech Republic"},
+		{Value: "DK", Text: "Denmark"},
+		{Value: "DJ", Text: "Djibouti"},
+		{Value: "DM", Text: "Dominica"},
+		{Value: "DO", Text: "Dominican Republic"},
+		{Value: "TM", Text: "East Timor"},
+		{Value: "EC", Text: "Ecuador"},
+		{Value: "EG", Text: "Egypt"},
+		{Value: "SV", Text: "El Salvador"},
+		{Value: "GQ", Text: "Equatorial Guinea"},
+		{Value: "ER", Text: "Eritrea"},
+		{Value: "EE", Text: "Estonia"},
+		{Value: "ET", Text: "Ethiopia"},
+		{Value: "FA", Text: "Falkland Islands"},
+		{Value: "FO", Text: "Faroe Islands"},
+		{Value: "FJ", Text: "Fiji"},
+		{Value: "FI", Text: "Finland"},
+		{Value: "FR", Text: "France"},
+		{Value: "GF", Text: "French Guiana"},
+		{Value: "PF", Text: "French Polynesia"},
+		{Value: "FS", Text: "French Southern Ter"},
+		{Value: "GA", Text: "Gabon"},
+		{Value: "GM", Text: "Gambia"},
+		{Value: "GE", Text: "Georgia"},
+		{Value: "DE", Text: "Germany"},
+		{Value: "GH", Text: "Ghana"},
+		{Value: "GI", Text: "Gibraltar"},
+		{Value: "GB", Text: "Great Britain"},
+		{Value: "GR", Text: "Greece"},
+		{Value: "GL", Text: "Greenland"},
+		{Value: "GD", Text: "Grenada"},
+		{Value: "GP", Text: "Guadeloupe"},
+		{Value: "GU", Text: "Guam"},
+		{Value: "GT", Text: "Guatemala"},
+		{Value: "GN", Text: "Guinea"},
+		{Value: "GY", Text: "Guyana"},
+		{Value: "HT", Text: "Haiti"},
+		{Value: "HW", Text: "Hawaii"},
+		{Value: "HN", Text: "Honduras"},
+		{Value: "HK", Text: "Hong Kong"},
+		{Value: "HU", Text: "Hungary"},
+		{Value: "IS", Text: "Iceland"},
+		{Value: "IN", Text: "India"},
+		{Value: "ID", Text: "Indonesia"},
+		{Value: "IA", Text: "Iran"},
+		{Value: "IQ", Text: "Iraq"},
+		{Value: "IR", Text: "Ireland"},
+		{Value: "IM", Text: "Isle of Man"},
+		{Value: "IL", Text: "Israel"},
+		{Value: "IT", Text: "Italy"},
+		{Value: "JM", Text: "Jamaica"},
+		{Value: "JP", Text: "Japan"},
+		{Value: "JO", Text: "Jordan"},
+		{Value: "KZ", Text: "Kazakhstan"},
+		{Value: "KE", Text: "Kenya"},
+		{Value: "KI", Text: "Kiribati"},
+		{Value: "KP", Text: "Korea North"},
+		{Value: "KR", Text: "Korea South"},
+		{Value: "KW", Text: "Kuwait"},
+		{Value: "KG", Text: "Kyrgyzstan"},
+		{Value: "LA", Text: "Laos"},
+		{Value: "LV", Text: "Latvia"},
+		{Value: "LB", Text: "Lebanon"},
+		{Value: "LS", Text: "Lesotho"},
+		{Value: "LR", Text: "Liberia"},
+		{Value: "LY", Text: "Libya"},
+		{Value: "LI", Text: "Liechtenstein"},
+		{Value: "LT", Text: "Lithuania"},
+		{Value: "LU", Text: "Luxembourg"},
+		{Value: "MO", Text: "Macau"},
+		{Value: "MK", Text: "Macedonia"},
+		{Value: "MG", Text: "Madagascar"},
+		{Value: "MY", Text: "Malaysia"},
+		{Value: "MW", Text: "Malawi"},
+		{Value: "MV", Text: "Maldives"},
+		{Value: "ML", Text: "Mali"},
+		{Value: "MT", Text: "Malta"},
+		{Value: "MH", Text: "Marshall Islands"},
+		{Value: "MQ", Text: "Martinique"},
+		{Value: "MR", Text: "Mauritania"},
+		{Value: "MU", Text: "Mauritius"},
+		{Value: "ME", Text: "Mayotte"},
+		{Value: "MX", Text: "Mexico"},
+		{Value: "MI", Text: "Midway Islands"},
+		{Value: "MD", Text: "Moldova"},
+		{Value: "MC", Text: "Monaco"},
+		{Value: "MN", Text: "Mongolia"},
+		{Value: "MS", Text: "Montserrat"},
+		{Value: "MA", Text: "Morocco"},
+		{Value: "MZ", Text: "Mozambique"},
+		{Value: "MM", Text: "Myanmar"},
+		{Value: "NA", Text: "Nambia"},
+		{Value: "NU", Text: "Nauru"},
+		{Value: "NP", Text: "Nepal"},
+		{Value: "AN", Text: "Netherland Antilles"},
+		{Value: "NL", Text: "Netherlands (Holland, Europe)"},
+		{Value: "NV", Text: "Nevis"},
+		{Value: "NC", Text: "New Caledonia"},
+		{Value: "NZ", Text: "New Zealand"},
+		{Value: "NI", Text: "Nicaragua"},
+		{Value: "NE", Text: "Niger"},
+		{Value: "NG", Text: "Nigeria"},
+		{Value: "NW", Text: "Niue"},
+		{Value: "NF", Text: "Norfolk Island"},
+		{Value: "NO", Text: "Norway"},
+		{Value: "OM", Text: "Oman"},
+		{Value: "PK", Text: "Pakistan"},
+		{Value: "PW", Text: "Palau Island"},
+		{Value: "PS", Text: "Palestine"},
+		{Value: "PA", Text: "Panama"},
+		{Value: "PG", Text: "Papua New Guinea"},
+		{Value: "PY", Text: "Paraguay"},
+		{Value: "PE", Text: "Peru"},
+		{Value: "PH", Text: "Philippines"},
+		{Value: "PO", Text: "Pitcairn Island"},
+		{Value: "PL", Text: "Poland"},
+		{Value: "PT", Text: "Portugal"},
+		{Value: "PR", Text: "Puerto Rico"},
+		{Value: "QA", Text: "Qatar"},
+		{Value: "ME", Text: "Republic of Montenegro"},
+		{Value: "RS", Text: "Republic of Serbia"},
+		{Value: "RE", Text: "Reunion"},
+		{Value: "RO", Text: "Romania"},
+		{Value: "RU", Text: "Russia"},
+		{Value: "RW", Text: "Rwanda"},
+		{Value: "NT", Text: "St Barthelemy"},
+		{Value: "EU", Text: "St Eustatius"},
+		{Value: "HE", Text: "St Helena"},
+		{Value: "KN", Text: "St Kitts-Nevis"},
+		{Value: "LC", Text: "St Lucia"},
+		{Value: "MB", Text: "St Maarten"},
+		{Value: "PM", Text: "St Pierre &amp; Miquelon"},
+		{Value: "VC", Text: "St Vincent &amp; Grenadines"},
+		{Value: "SP", Text: "Saipan"},
+		{Value: "SO", Text: "Samoa"},
+		{Value: "AS", Text: "Samoa American"},
+		{Value: "SM", Text: "San Marino"},
+		{Value: "ST", Text: "Sao Tome &amp; Principe"},
+		{Value: "SA", Text: "Saudi Arabia"},
+		{Value: "SN", Text: "Senegal"},
+		{Value: "RS", Text: "Serbia"},
+		{Value: "SC", Text: "Seychelles"},
+		{Value: "SL", Text: "Sierra Leone"},
+		{Value: "SG", Text: "Singapore"},
+		{Value: "SK", Text: "Slovakia"},
+		{Value: "SI", Text: "Slovenia"},
+		{Value: "SB", Text: "Solomon Islands"},
+		{Value: "OI", Text: "Somalia"},
+		{Value: "ZA", Text: "South Africa"},
+		{Value: "ES", Text: "Spain"},
+		{Value: "LK", Text: "Sri Lanka"},
+		{Value: "SD", Text: "Sudan"},
+		{Value: "SR", Text: "Suriname"},
+		{Value: "SZ", Text: "Swaziland"},
+		{Value: "SE", Text: "Sweden"},
+		{Value: "CH", Text: "Switzerland"},
+		{Value: "SY", Text: "Syria"},
+		{Value: "TA", Text: "Tahiti"},
+		{Value: "TW", Text: "Taiwan"},
+		{Value: "TJ", Text: "Tajikistan"},
+		{Value: "TZ", Text: "Tanzania"},
+		{Value: "TH", Text: "Thailand"},
+		{Value: "TG", Text: "Togo"},
+		{Value: "TK", Text: "Tokelau"},
+		{Value: "TO", Text: "Tonga"},
+		{Value: "TT", Text: "Trinidad &amp; Tobago"},
+		{Value: "TN", Text: "Tunisia"},
+		{Value: "TR", Text: "Turkey"},
+		{Value: "TU", Text: "Turkmenistan"},
+		{Value: "TC", Text: "Turks &amp; Caicos Is"},
+		{Value: "TV", Text: "Tuvalu"},
+		{Value: "UG", Text: "Uganda"},
+		{Value: "UA", Text: "Ukraine"},
+		{Value: "AE", Text: "United Arab Emirates"},
+		{Value: "GB", Text: "United Kingdom"},
+		{Value: "US", Text: "United States of America"},
+		{Value: "UY", Text: "Uruguay"},
+		{Value: "UZ", Text: "Uzbekistan"},
+		{Value: "VU", Text: "Vanuatu"},
+		{Value: "VS", Text: "Vatican City State"},
+		{Value: "VE", Text: "Venezuela"},
+		{Value: "VN", Text: "Vietnam"},
+		{Value: "VB", Text: "Virgin Islands (Brit)"},
+		{Value: "VA", Text: "Virgin Islands (USA)"},
+		{Value: "WK", Text: "Wake Island"},
+		{Value: "WF", Text: "Wallis &amp; Futana Is"},
+		{Value: "YE", Text: "Yemen"},
+		{Value: "ZR", Text: "Zaire"},
+		{Value: "ZM", Text: "Zambia"},
+		{Value: "ZW", Text: "Zimbabwe"},
+	}
+
+	formList := agentTable.GetForm().AddXssJsFilter().
+		HideBackButton().
+		HideContinueNewCheckBox()
+		// HideResetButton()
+
+	formList.AddField("ID", "id", db.Int, form.Default).FieldNotAllowEdit().FieldNotAllowAdd()
+	formList.AddField(lg("UserName"), "username", db.Varchar, form.Text).FieldHelpMsg(template.HTML(lg("should be unique"))).FieldMust()
+	formList.AddField(lg("Password"), "password", db.Varchar, form.Password).FieldMust()
+	formList.AddField(lg("Country"), "country", db.Varchar, form.SelectSingle).FieldOptions(countryOptions).FieldMust()
+	formList.AddField(lg("Score"), "score", db.Decimal, form.Text).FieldMust()
+	formList.AddField(lg("Name"), "name", db.Varchar, form.Text).FieldHelpMsg(template.HTML(lg("should be unique")))
+	formList.AddField(lg("Tel"), "tel", db.Varchar, form.Text)
+	formList.AddField(lg("Description"), "description", db.Varchar, form.Text)
+
+	formList.SetTable("Agents").
+		SetTitle(lg("Add new agent")).
+		// SetPostValidator(func(values form2.Values) error {
+		// 	fmt.Println("PostValidator")
+		// 	fmt.Println(values)
+
+		// 	return nil
+		// }).
+		SetPostHook(func(values form2.Values) error {
+			fmt.Println("PostHook")
+			fmt.Println(values)
+
+			return nil
+		}).
+		SetInsertFn(func(values form2.Values) error {
+
+			fmt.Println(values)
+
+			if !models.User().SetConn(s.conn).FindByUserName(values.Get("username")).IsEmpty() {
+				return errors.New("Username exists")
+			}
+
+			if !models.User().SetConn(s.conn).FindByName(values.Get("name")).IsEmpty() {
+				return errors.New("Name exists")
+			}
+
+			scoreValue, err := strconv.ParseFloat(values.Get("score"), 64)
+
+			if err != nil {
+				return errors.New("Input correct score value")
+			}
+
+			username := values.Get("username")
+			password := values.Get("password")
+			country := values.Get("country")
+			name := values.Get("name")
+			tel := values.Get("tel")
+			description := values.Get("description")
+			_, txErr := s.connection().WithTransaction(func(tx *sql.Tx) (e error, i map[string]interface{}) {
+				_, newUserErr := models.User().WithTx(tx).SetConn(s.conn).New(username, password, name, country, tel, description, "", scoreValue)
+
+				if db.CheckError(newUserErr, db.INSERT) {
+					return newUserErr, nil
+				}
+
+				return nil, nil
+			})
+
+			return txErr
+		})
+
+	return
+}
+
+// added by jaison
+func (s *SystemTable) GetPlayersTable(ctx *context.Context) (playerTable Table) {
+	fmt.Println("plugins.modules.table.generator.go GetPlayersTable")
+
+	playerTableConfig := DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver)
+
+	playerTable = NewDefaultTable(playerTableConfig)
+
+	info := playerTable.GetInfo().AddXssJsFilter().HideFilterArea()
+	info.SetSortAsc()
+
+	// #	UserName	Country	Score	PlayerStatus	DisOnlineDay	Name	Operation
+	info.AddField("#", "id", db.Int)
+	info.AddField(lg("UserName"), "username", db.Varchar)
+	info.AddField(lg("Country"), "country", db.Varchar)
+	info.AddField(lg("Score"), "score", db.Decimal)
+	info.AddField(lg("PlayerStatus"), "playerstatus", db.Decimal)
+	info.AddField(lg("DisOnlineDay"), "disonlineday", db.Decimal)
+	info.AddField(lg("Name"), "name", db.Varchar)
+	info.AddField(lg("Process"), "operation", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			buttons := template.HTML(`<td id="op2_0" class="text-left">`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/Player/EditScore?id=` + model.ID + `'">set score</button>`)
+
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/ScoreLog/SearchScoreLog?id=` + model.ID + `'">score log</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/Player/Edit?id=` + model.ID + `'">edit</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/Report/Search?id=` + model.ID + `'">report</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/GameLog/SearchGameLog?id=` + model.ID + `'">game log</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/RedPacketLog/SetRedPacket?id=` + model.ID + `'">set redpacket</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/RedPacketLog/SearchRedPacketLog?id=` + model.ID + `'">redpacket log</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/Player/SendEventPlayer?playerid=` + model.ID + `'">send event</button>`)
+			buttons += template.HTML(`<button type="button" name="forcequite" title="` + model.Row[`username`].(string) + `" player="` + model.ID + `" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="">quit game</button>`)
+
+			if model.Row[`state`] == 1 {
+				buttons += template.HTML(`<button type="button" name="able" title="` + model.Row[`username`].(string) + `" rel="disable" player="` + model.ID + `" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="">disable</button>`)
+			} else {
+				buttons += template.HTML(`<button type="button" name="able" title="` + model.Row[`username`].(string) + `" rel="disable" player="` + model.ID + `" class="btn btn-danger btn-xs" onfocus="this.blur();" onclick="">enable</button>`)
+			}
+
+			buttons += template.HTML(`<button type="button" name="stuckremove" title="` + model.Row[`username`].(string) + `" player="` + model.ID + `" class="btn btn-dropbox btn-xs" onfocus="this.blur();" onclick="">remove stuck</button>`)
+			buttons += template.HTML(`<button type="button" name="closeonlineplayer" title="` + model.Row[`username`].(string) + `" player="` + model.ID + `" class="btn btn-dropbox btn-xs" onfocus="this.blur();" onclick="">closeonline</button>`)
+
+			buttons += template.HTML(`</td>`)
+			return buttons
+		})
+
+	info.HideDeleteButton()
+	info.HideExportButton()
+
+	info.HideNewButton()
+	info.HideFilterButton()
+	info.HideRowSelector()
+	info.HideEditButton()
+	info.HideDetailButton()
+
+	info.SetTable("Players").
+		SetTitle("Player List").
+		SetDescription("").
+		SetHeaderHtml(template.HTML(`
+			<h6 class="box-title" id="d_tip_2" style="font-size:0.9em;">
+				<span class="badge bg-red hidden-xs hidden-sm">My player list</span>
+				<span class="hidden-xs hidden-sm">　｜　</span>
+				<a class="hidden-xs hidden-sm" name="create" href="javascript:;" onclick="checkStatePlayer();" target="_self">AddPlayer</a>
+				<span class="hidden-xs hidden-sm">　｜　</span>
+				<a class="hidden-xs hidden-sm" href="/Report/Search?action=TotalPlayer&parentId=@ViewBag.parentId" target="_self">Player total report</a>
+				<span class="hidden-xs hidden-sm">　｜　</span>
+				<a class="hidden-xs hidden-sm" name="enable_all" style="cursor:pointer">Enable all player</a>
+				<span class="hidden-xs hidden-sm">　｜　</span>
+				<a class="hidden-xs hidden-sm" name="disable_all" style="cursor:pointer">Disable all player</a>
+				<span class="hidden-xs hidden-sm">　｜　</span>
+				<a class="hidden-xs hidden-sm" name="reload_all_players" href="###" onclick="javascript:reloadPlayerList();">Reload playerList</a>
+				<div class="margin visible-xs visible-sm">
+					<div class="btn-group">
+						<button class="btn btn-default btn-flat" type="button">PlayerList Menu</button>
+						<button data-toggle="dropdown" class="btn btn-default btn-flat dropdown-toggle" type="button">
+							<span class="caret"></span>
+							<span class="sr-only">Toggle Dropdown</span>
+						</button>
+						<ul role="menu" class="dropdown-menu">
+							<li>
+								<a name="create" href="javascript:;" onclick="checkStatePlayer();" target="_self">
+									<span class="text-bold"><i class="fa fa-angle-right"></i> Add player</span>
+								</a>
+							</li>
+							<li class="divider"></li>
+							<li>
+								<a href="/Report/Search?action=TotalPlayer&parentId=@ViewBag.parentId" target="_self">
+									<span class="text-bold"><i class="fa fa-angle-right"></i> Player total report</span>
+								</a>
+							</li>
+							<li class="divider"></li>
+							<li>
+								<a target="_self" name="enable_all">
+									<span class="text-bold"><i class="fa fa-angle-right"></i> Enable all player</span>
+								</a>
+							</li>
+							<li class="divider"></li>
+							<li>
+								<a name="disable_all" target=" _self">
+									<span class="text-bold"><i class="fa fa-angle-right"></i> Disable all player</span>
+								</a>
+							</li>
+							<li class="divider"></li>
+							<li>
+								<a href="###" target="_self" name="reload_all_players" onclick="javascript:reloadPlayerList();">
+									<span class="text-bold"><i class="fa fa-angle-right"></i> Reload playerList</span>
+								</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</h6>
+			<div class="box-tools pull-right">
+				<button data-widget="collapse" class="btn btn-box-tool" type="button"><i class="fa fa-minus"></i></button>
+			</div>`))
+
+	return
+}
+
+// for search users
+// added by jaison
+func (s *SystemTable) GetPlayerAgentTable(ctx *context.Context) (playerAgentTable Table) {
+	fmt.Println("plugins.modules.table.generator.go GetPlayerAgentTable")
+
+	playerAgentTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
+
+	info := playerAgentTable.GetInfo().AddXssJsFilter().HideFilterArea()
+
+	info.AddField("ID", "id", db.Int).FieldHide()
+	info.AddField(lg("Username"), "username", db.Varchar)
+	info.AddField(lg("Score"), "score", db.Decimal)
+	info.AddField(lg("Name"), "name", db.Varchar)
+	info.AddField(lg("Agent"), "agent", db.Varchar)
+	info.AddField(lg("Operation"), "state", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			// fmt.Println(model)
+
+			// buttons := template.HTML(`<td id="op2_0" class="text-left">`)
+			buttons := template.HTML(`<button type="button" class="btn btn-info btn-xs" title="" onfocus="this.blur();" onclick="document.location='/Agent/EditScore?id=` + model.ID + `'">set score</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" title="" onfocus="this.blur();" onclick="document.location='/ScoreLog/SearchScoreLog?sid=` + model.ID + `'">score log</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" title="" onfocus="this.blur();" onclick="document.location='/Agent/Edit?id=` + model.ID + `'">edit</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" title="" onfocus="this.blur();" onclick="document.location='/Report/Search?sid=` + model.ID + `'">report</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" title="" onfocus="this.blur();" onclick="document.location='/Report/Chart?sid=` + model.ID + `'">chart</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" title="" onfocus="this.blur();" onclick="">Total</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/BonusLog/SetBonus?sid=` + model.ID + `'">set bonus</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/BonusLog/SearchBonusLog?sid=` + model.ID + `'">bonus log</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/RedPacketLog/SetRedPacket?sid=` + model.ID + `'">set redpacket</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/RedPacketLog/SearchRedPacketLog?sid=` + model.ID + `'">redpacket log</button>`)
+
+			if model.Row[`status`] == 1 {
+				buttons += template.HTML(`<button type="button" name="agentable" title="` + model.Row[`username`].(string) + `" rel="disable" player="` + model.ID + `" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="">disable</button>`)
+			} else {
+				buttons += template.HTML(`<button type="button" name="agentable" title="` + model.Row[`username`].(string) + `" rel="enable" player="` + model.ID + `" class="btn btn-danger btn-xs" onfocus="this.blur();" onclick="">enable</button>`)
+			}
+
+			buttons += template.HTML(`<button type="button" name="closeonlineagent" title="` + model.Row[`username`].(string) + `" rel="closeonlineagent" player="` + model.ID + `" class="btn btn-danger btn-xs" onfocus="this.blur();" onclick="">closeonline</button>`)
+			buttons += template.HTML(`<button type="button" name="closeonlineagentall" title="` + model.Row[`username`].(string) + `" rel="closeonlineagentall" player="` + model.ID + `" class="btn btn-yahoo btn-xs" onfocus="this.blur();" onclick="">closeonlineforall</button>`)
+			// buttons += template.HTML(`</td>`)
+
+			return buttons
+		})
+
+	info.SetTable("Agents").
+		SetTitle("Higher Level AgentList").
+		SetSortAsc()
+
+	return
+}
+
+// added by jaison
+func (s *SystemTable) GetPlayerTable(ctx *context.Context) (playerTable Table) {
+	fmt.Println("plugins.modules.table.generator.go GetPlayerTable")
+
+	playerTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
+
+	info := playerTable.GetInfo().AddXssJsFilter().HideFilterArea()
+
+	// UserName	Online	PlayerStatus	Agent	Balance	Name	Tel	Description	SADescription	Operation
+	info.AddField("ID", "id", db.Int).FieldHide()
+	info.AddField(lg("UserName"), "username", db.Varchar)
+	info.AddField(lg("Online"), "online", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			// fmt.Println(model.Row[`isonline`])
+
+			var compareValue int64 = 0
+
+			tag := template.HTML(``)
+			if model.Row[`isonline`] == compareValue {
+				onlineDate, err := time.Parse(time.RFC3339, model.Row[`online`].(string))
+
+				if err != nil || onlineDate.Year() <= 1 {
+					tag += template.HTML(`<span class='badge bg-gray'>N/A</span>`)
+					return tag
+				}
+
+				nowTime := time.Now().UTC()
+
+				offDays := int(math.Floor(nowTime.Sub(onlineDate.UTC()).Hours() / 24))
+
+				tag += template.HTML(`<span class="badge bg-gray">OFF: ` + strconv.Itoa(offDays) + ` Days </span>`)
+
+				return tag
+			}
+			tag = template.HTML(`<span class='badge bg-green'>Yes</span>`)
+
+			return tag
+		})
+	info.AddField(lg("PlayerStatus"), "isonline", db.Integer).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			// fmt.Println(model.Row[`isonline`])
+
+			tag := template.HTML(``)
+			if model.Value == "0" {
+				tag += template.HTML(`<span class="badge bg-gray">Disconnected</span>`)
+			}
+
+			if model.Value == "1" {
+				tag += template.HTML(`<span class="badge bg-blue-gradient">In Lobby</span>`)
+			}
+
+			if model.Value == "2" {
+				tag += template.HTML(`<span class="badge bg-red">Playing Game</span>`)
+			}
+
+			return tag
+		})
+	info.AddField(lg("Agent"), "agent", db.Varchar)
+	info.AddField(lg("Balance"), "balance", db.Decimal)
+	info.AddField(lg("Name"), "name", db.Varchar)
+	info.AddField(lg("Operation"), "operation", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			// buttons := template.HTML(`<td id="op1_0" class="text-left">`)
+			buttons := template.HTML(`<button class="btn btn-info btn-xs"  onfocus="this.blur();" onclick="document.location='/Player/EditScore?id=` + model.ID + `'">set score</button>`)
+			buttons += template.HTML(`<button class="btn btn-info btn-xs"  onfocus="this.blur();" onclick="document.location='/ScoreLog/SearchScoreLog?id=` + model.ID + `'">score log</button>`)
+			buttons += template.HTML(`<button class="btn btn-info btn-xs"  onfocus="this.blur();" onclick="document.location='/Player/Edit?id=` + model.ID + `'">edit</button>`)
+			buttons += template.HTML(`<button class="btn btn-info btn-xs"  onfocus="this.blur();" onclick="document.location='/Report/Search?id=` + model.ID + `'">report</button>`)
+			buttons += template.HTML(`<button class="btn btn-info btn-xs"  onfocus="this.blur();" onclick="document.location='/GameLog/SearchGameLog?id=` + model.ID + `'">game log</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/RedPacketLog/SetRedPacket?id=` + model.ID + `'">set redpacket</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/RedPacketLog/SearchRedPacketLog?id=` + model.ID + `'">redpacket log</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/Player/SendEventPlayer?playerid=` + model.ID + `'">send event</button>`)
+			buttons += template.HTML(`<button class="btn btn-info btn-xs" name="forcequite" title="` + model.Row[`username`].(string) + `" player="` + model.ID + `" onfocus="this.blur();" onclick="">quit game</button>`)
+
+			if model.Row[`state`] == 1 {
+				buttons += template.HTML(`<button type="button" name="able" title="` + model.Row[`username`].(string) + `" rel="disable" player="` + model.ID + `" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="">disable</button>`)
+			} else {
+				buttons += template.HTML(`<button type="button" name="able" title="` + model.Row[`username`].(string) + `" rel ="enable" player="` + model.ID + `" class="btn btn-danger btn-xs" onfocus="this.blur();" onclick="">enable</button>`)
+			}
+			buttons += template.HTML(`<button type="button" name="stuckremove" title="` + model.Row[`username`].(string) + `" player="` + model.ID + `" class="btn btn-dropbox btn-xs" onfocus="this.blur();" onclick="">remove stuck</button>`)
+			buttons += template.HTML(`<button type="button" name="closeonlineplayer" title="` + model.Row[`username`].(string) + `" player="` + model.ID + `" class="btn btn-dropbox btn-xs" onfocus="this.blur();" onclick="">closeonline</button>`)
+			// buttons += template.HTML(`</td>`)
+
+			return buttons
+		})
+
+	info.SetTable("Players").
+		SetSortAsc()
+	return
+}
+
+// added by jaison
+func (s *SystemTable) GetAgentTable(ctx *context.Context) (agentTable Table) {
+	fmt.Println("plugins.modules.table.generator.go GetAgentTable")
+
+	agentTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
+
+	info := agentTable.GetInfo().AddXssJsFilter().HideFilterArea()
+
+	info.AddField("ID", "id", db.Int).FieldHide()
+	info.AddField(lg("Username"), "username", db.Varchar)
+	info.AddField(lg("Score"), "score", db.Decimal)
+	info.AddField(lg("Name"), "name", db.Varchar)
+	info.AddField(lg("Agent"), "agent", db.Varchar)
+	info.AddField(lg("Operation"), "operation", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			// fmt.Println(model)
+
+			// buttons := template.HTML(`<td id="op2_0" class="text-left">`)
+			buttons := template.HTML(`<button type="button" class="btn btn-info btn-xs" title="" onfocus="this.blur();" onclick="document.location='/Agent/EditScore?id=` + model.ID + `'">set score</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" title="" onfocus="this.blur();" onclick="document.location='/ScoreLog/SearchScoreLog?sid=` + model.ID + `'">score log</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" title="" onfocus="this.blur();" onclick="document.location='/Agent/Edit?id=` + model.ID + `'">edit</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" title="" onfocus="this.blur();" onclick="document.location='/Report/Search?sid=` + model.ID + `'">report</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" title="" onfocus="this.blur();" onclick="document.location='/Report/Chart?sid=` + model.ID + `'">chart</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" title="" onfocus="this.blur();" onclick="">Total</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/BonusLog/SetBonus?sid=` + model.ID + `'">set bonus</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/BonusLog/SearchBonusLog?sid=` + model.ID + `'">bonus log</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/RedPacketLog/SetRedPacket?sid=` + model.ID + `'">set redpacket</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/RedPacketLog/SearchRedPacketLog?sid=` + model.ID + `'">redpacket log</button>`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="document.location='/Agent/SendEventAgent?agentid=` + model.ID + `'">send event</button>`)
+
+			if model.Row[`state`] == 1 {
+				buttons += template.HTML(`<button type="button" name="agentable" title="` + model.Row[`username`].(string) + `" rel="disable" player="` + model.ID + `" class="btn btn-warning btn-xs" onfocus="this.blur();" onclick="">disable</button>`)
+			} else {
+				buttons += template.HTML(`<button type="button" name="agentable" title="` + model.Row[`username`].(string) + `" rel="enable" player="` + model.ID + `" class="btn btn-danger btn-xs" onfocus="this.blur();" onclick="">enable</button>`)
+			}
+
+			buttons += template.HTML(`<button type="button" name="closeonlineagent" title="` + model.Row[`username`].(string) + `" rel="closeonlineagent" player="` + model.ID + `" class="btn btn-danger btn-xs" onfocus="this.blur();" onclick="">closeonline</button>`)
+			buttons += template.HTML(`<button type="button" name="closeonlineagentall" title="` + model.Row[`username`].(string) + `" rel="closeonlineagentall" player="` + model.ID + `" class="btn btn-yahoo btn-xs" onfocus="this.blur();" onclick="">closeonlineforall</button>`)
+			// buttons += template.HTML(`</td>`)
+
+			return buttons
+		})
+
+	info.SetTable("Agents").
+		SetSortAsc()
+	return
+}
+
+// added by jaison
+func (s *SystemTable) GetInGamePlayers(ctx *context.Context) (inGamePlayersTable Table) {
+	inGamePlayersTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
+
+	// #	UserName	Score	PlayerStatus	DisOnlineDay	Name	Tel	Description	SADescription
+	info := inGamePlayersTable.GetInfo().AddXssJsFilter().HideFilterArea()
+
+	info.SetSortAsc()
+	info.AddField("#", "id", db.Int)
+	info.AddField(lg("UserName"), "username", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			// fmt.Println(model)
+
+			tag := template.HTML(`<a href="/admin/Search/Index?username=` + model.Value + `&type=1">` + model.Value + `</a>`)
+
+			return tag
+		})
+	info.AddField(lg("Name"), "name", db.Varchar)
+	info.AddField(lg("Score"), "balance", db.Decimal)
+	info.AddField(lg("PlayerStatus"), "isonline", db.Integer).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(``)
+			if model.Value == "0" {
+				tag += template.HTML(`<span class="badge bg-gray">Disconnected</span>`)
+			}
+
+			if model.Value == "1" {
+				tag += template.HTML(`<span class="badge bg-blue-gradient">In Lobby</span>`)
+			}
+
+			if model.Value == "2" {
+				tag += template.HTML(`<span class="badge bg-red">Playing Game</span>`)
+			}
+
+			return tag
+		})
+
+	info.AddField(lg("DisOnlineDay"), "online", db.Datetime).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			onlineDate, err := time.Parse(time.RFC3339, model.Value)
+
+			tag := template.HTML(``)
+
+			if err != nil || onlineDate.Year() <= 1 {
+				tag += template.HTML(`<span class="badge bg-gray">NO LOGIN GAME</span>`)
+				return tag
+			}
+
+			nowTime := time.Now().UTC()
+
+			offDays := int(math.Floor(nowTime.Sub(onlineDate.UTC()).Hours() / 24))
+
+			tag += template.HTML(`<span class="badge bg-light-blue">OFF: ` + strconv.Itoa(offDays) + ` Days </span>`)
+
+			return tag
+		})
+	info.Where("isonline", "=", "2")
+
+	info.HideDeleteButton()
+	info.HideExportButton()
+
+	info.HideNewButton()
+	info.HideFilterButton()
+	info.HideRowSelector()
+	info.HideEditButton()
+	info.HideDetailButton()
+
+	info.SetTable("Players").
+		SetHeaderHtml(template.HTML(`
+			<h6 class="box-title" id="d_tip_2" style="font-size:0.9em;">
+				<span class="badge bg-red hidden-sm" id="onlinecount"></span>
+			</h6>
+			<div class="box-tools pull-right">
+				<button data-widget="collapse" class="btn btn-box-tool" type="button"><i class="fa fa-minus"></i></button>
+			</div>`))
+
+	inGamePlayersTable.SetLoadFinishedCallBack(func(values ...interface{}) {
+		fmt.Println("CallBack in GetInGamePlayers")
+
+		if len(values) == 0 {
+			return
+		}
+
+		info.SetHeaderHtml(template.HTML(`
+			<h6 class="box-title" id="d_tip_2" style="font-size:0.9em;">
+				<span class="badge bg-red hidden-sm" id="onlinecount">Online User Count - ` + strconv.Itoa(len(values[0].(PanelInfo).InfoList)) + ` players</span>
+			</h6>
+			<div class="box-tools pull-right">
+				<button data-widget="collapse" class="btn btn-box-tool" type="button"><i class="fa fa-minus"></i></button>
+			</div>`))
+	})
+	return
+}
+
+// added by jaison
+func ConvertInterface_A(input interface{}) string {
+
+	var strRet string = ""
+	object := reflect.ValueOf(input)
+
+	// Make a slice of objects to iterate through and populate the string slice
+	var items []interface{}
+	for i := 0; i < object.Len(); i++ {
+		items = append(items, object.Index(i).Interface())
+	}
+
+	// Populate the rest of the items into <records>
+	for _, v := range items {
+		// item := reflect.ValueOf(v)
+		var aCaracter uint8 = v.(uint8)
+
+		strRet += string(aCaracter)
+	}
+
+	return strRet
+}
+
+// added by jaison
+func (s *SystemTable) GetWinningPlayers(ctx *context.Context) (winningPlayersTable Table) {
+	fmt.Println("plugins.modules.table.generator.go GetWinningPlayers")
+	config := DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver)
+	config.PrimaryKey = PrimaryKey{
+		Type: db.Int,
+		Name: `username`,
+	}
+
+	winningPlayersTable = NewDefaultTable(config)
+
+	// #	UserName	OnlineState	ReportStartTime	Total Bet	Total Win	Total Win - Total Bet
+	info := winningPlayersTable.GetInfo().AddXssJsFilter().HideFilterArea().
+		HideDeleteButton().
+		HideDetailButton().
+		HideEditButton().
+		HideNewButton().
+		HideRowSelector().
+		HideExportButton().
+		HideFilterButton()
+
+	info.SetSortAsc()
+	// info.AddField("#", "id", db.Int)
+	info.AddField(lg("UserName"), "username", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+
+			tag := template.HTML(model.Row[`username`].(string))
+
+			return tag
+		})
+	info.AddField(lg("OnlineState"), "isonline", db.Integer).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(``)
+
+			if model.Row[`isonline`] == int64(0) {
+				tag += template.HTML(`<span class="badge bg-gray">Disconnected</span>`)
+				return tag
+			}
+			if model.Row[`isonline`] == int64(1) {
+				tag += template.HTML(`<span class="badge bg-blue-gradient">In Lobby</span>`)
+				return tag
+			}
+
+			tag += template.HTML(`<span class="badge bg-red">Playing Game</span>`)
+
+			return tag
+		})
+	info.AddField(lg("Total Bet"), "BetField", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			betField, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`BetField`]), 64)
+
+			tag := template.HTML(``)
+			if err != nil {
+				tag += template.HTML(`Failed to parse value.`)
+				return tag
+			}
+
+			tag = template.HTML(fmt.Sprintf("%.2f", betField))
+
+			return tag
+		})
+	info.AddField(lg("Total Win"), "WinField", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			winField, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`WinField`]), 64)
+
+			tag := template.HTML(``)
+			if err != nil {
+				tag += template.HTML(`Failed to parse value.`)
+				return tag
+			}
+
+			tag = template.HTML(fmt.Sprintf("%.2f", winField))
+
+			return tag
+		})
+	info.AddField(lg("Profit(Total Win - Total Bet)"), "profit", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			winField, err1 := strconv.ParseFloat(ConvertInterface_A(model.Row[`WinField`]), 64)
+			betField, err2 := strconv.ParseFloat(ConvertInterface_A(model.Row[`BetField`]), 64)
+
+			tag := template.HTML(``)
+
+			if err1 != nil || err2 != nil {
+				tag += template.HTML(`Failed to parse value.`)
+				return tag
+			}
+
+			tag = template.HTML(fmt.Sprintf("%.2f", winField-betField))
+			return tag
+		})
+
+	info.SetTable("Reports")
+	return
+}
+
+// added by jaison
+func (s *SystemTable) GetLoginLogs(ctx *context.Context) (loginLogsTable Table) {
+	fmt.Println("plugins.modules.table.generator.go GetLoginLogs")
+
+	loginLogsTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
+
+	info := loginLogsTable.GetInfo().AddXssJsFilter().HideFilterArea()
+
+	info.AddField("ID", "id", db.Int).FieldHide()
+	info.AddField(lg("Username"), "username", db.Varchar)
+	info.AddField(lg("IP"), "ip", db.Varchar)
+	info.AddField(lg("DateTime"), "datetime", db.Varchar)
+
+	info.SetTable("LoginLogs").
+		SetTitle(lg("Player Login Logs")).
+		SetSortField("datetime").
+		SetSortDesc().
+		AddLimitFilter(10)
+	return
+}
+
+// added by jaison
+func (s *SystemTable) GetScoreLogs(ctx *context.Context) (scoreLogsTable Table) {
+	fmt.Println("plugins.modules.table.generator.go GetScoreLogs")
+
+	scoreLogsTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
+
+	info := scoreLogsTable.GetInfo().AddXssJsFilter().HideFilterArea()
+
+	// Account UserName SetScore BeforeScore AfterScore IP DateTime
+	info.AddField("#", "id", db.Int).FieldHide()
+	info.AddField(lg("Account"), "account", db.Varchar)
+	info.AddField(lg("Username"), "username", db.Varchar)
+	info.AddField(lg("SetScore"), "setscore", db.Decimal)
+	info.AddField(lg("BeforeScore"), "beforescore", db.Decimal)
+	info.AddField(lg("AfterScore"), "afterscore", db.Decimal)
+	info.AddField(lg("IP"), "ip", db.Varchar)
+	info.AddField(lg("DateTime"), "datetime", db.Datetime)
+
+	info.SetTable("ScoreLogs").
+		SetSortField("datetime").
+		SetSortDesc()
+
+	return
+}
+
+// added by jaison
+func (s *SystemTable) GetBonusLogs(ctx *context.Context) (bonusLogsTable Table) {
+	fmt.Println("plugins.modules.table.generator.go GetBonusLogs")
+
+	bonusLogsTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
+
+	info := bonusLogsTable.GetInfo().AddXssJsFilter().HideFilterArea()
+
+	// #	Agent Name	Bonus	Processed	RegDate	Game Name	Player Name	Type	ProcessedDate
+	info.AddField("#", "id", db.Int).FieldHide()
+	info.AddField(lg("Agent Name"), "agentname", db.Varchar)
+	info.AddField(lg("Bonus"), "bonus", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			bonus, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`bonus`]), 64)
+
+			tag := template.HTML(``)
+			if err != nil {
+				tag += template.HTML(`Failed to parse value.`)
+				return tag
+			}
+
+			tag = template.HTML(fmt.Sprintf("%.2f", bonus))
+
+			return tag
+		})
+	info.AddField(lg("Processed"), "processed", db.Integer).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(``)
+
+			if model.Value == "0" {
+				tag += template.HTML(`Not Processed`)
+			} else {
+				tag += template.HTML(`Processed`)
+			}
+
+			return tag
+		})
+	info.AddField(lg("RegDate"), "regdate", db.Datetime)
+	info.AddField(lg("Game Name"), "gamename", db.Varchar)
+	info.AddField(lg("Player Name"), "playerid", db.Integer)
+	info.AddField(lg("Type"), "bonustype", db.Integer).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(``)
+
+			if model.Value == "0" {
+				tag += template.HTML(`Random`)
+				return tag
+			}
+
+			if model.Value == "1" {
+				tag += template.HTML(`Minor`)
+				return tag
+			}
+
+			if model.Value == "2" {
+				tag += template.HTML(`Major`)
+				return tag
+			}
+
+			tag += template.HTML(`Undefined`)
+			return tag
+		})
+	info.AddField(lg("ProcessedDate"), "processeddate", db.Varchar)
+
+	info.SetTable("BonusLogs").
+		// SetSortField("datetime").
+		SetSortDesc()
+
+	return
+}
+
+// added by jaison
+func (s *SystemTable) GetPlayerReportLogs(ctx *context.Context) (bonusLogsTable Table) {
+	fmt.Println("plugins.modules.table.generator.go GetBonusLogs")
+
+	bonusLogsTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
+
+	info := bonusLogsTable.GetInfo().AddXssJsFilter().HideFilterArea()
+
+	// #	Agent Name	Bonus	Processed	RegDate	Game Name	Player Name	Type	ProcessedDate
+	info.AddField("#", "id", db.Int).FieldHide()
+	info.AddField(lg("Agent Name"), "agentname", db.Varchar)
+	info.AddField(lg("Bonus"), "bonus", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			bonus, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`bonus`]), 64)
+
+			tag := template.HTML(``)
+			if err != nil {
+				tag += template.HTML(`Failed to parse value.`)
+				return tag
+			}
+
+			tag = template.HTML(fmt.Sprintf("%.2f", bonus))
+
+			return tag
+		})
+	info.AddField(lg("Processed"), "processed", db.Integer).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(``)
+
+			if model.Value == "0" {
+				tag += template.HTML(`Not Processed`)
+			} else {
+				tag += template.HTML(`Processed`)
+			}
+
+			return tag
+		})
+	info.AddField(lg("RegDate"), "regdate", db.Datetime)
+	info.AddField(lg("Game Name"), "gamename", db.Varchar)
+	info.AddField(lg("Player Name"), "playerid", db.Integer)
+	info.AddField(lg("Type"), "bonustype", db.Integer).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(``)
+
+			if model.Value == "0" {
+				tag += template.HTML(`Random`)
+				return tag
+			}
+
+			if model.Value == "1" {
+				tag += template.HTML(`Minor`)
+				return tag
+			}
+
+			if model.Value == "2" {
+				tag += template.HTML(`Major`)
+				return tag
+			}
+
+			tag += template.HTML(`Undefined`)
+			return tag
+		})
+	info.AddField(lg("ProcessedDate"), "processeddate", db.Varchar)
+
+	info.SetTable("BonusLogs").
+		// SetSortField("datetime").
+		SetSortDesc()
+
+	return
+}
+
+// added by jaison
+func (s *SystemTable) GetTopWinPlayers(ctx *context.Context) (bonusLogsTable Table) {
+	fmt.Println("plugins.modules.table.generator.go GetBonusLogs")
+
+	bonusLogsTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
+
+	info := bonusLogsTable.GetInfo().AddXssJsFilter().HideFilterArea()
+
+	// #	Agent Name	Bonus	Processed	RegDate	Game Name	Player Name	Type	ProcessedDate
+	info.AddField("#", "id", db.Int).FieldHide()
+	info.AddField(lg("Agent Name"), "agentname", db.Varchar)
+	info.AddField(lg("Bonus"), "bonus", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			bonus, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`bonus`]), 64)
+
+			tag := template.HTML(``)
+			if err != nil {
+				tag += template.HTML(`Failed to parse value.`)
+				return tag
+			}
+
+			tag = template.HTML(fmt.Sprintf("%.2f", bonus))
+
+			return tag
+		})
+	info.AddField(lg("Processed"), "processed", db.Integer).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(``)
+
+			if model.Value == "0" {
+				tag += template.HTML(`Not Processed`)
+			} else {
+				tag += template.HTML(`Processed`)
+			}
+
+			return tag
+		})
+	info.AddField(lg("RegDate"), "regdate", db.Datetime)
+	info.AddField(lg("Game Name"), "gamename", db.Varchar)
+	info.AddField(lg("Player Name"), "playerid", db.Integer)
+	info.AddField(lg("Type"), "bonustype", db.Integer).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(``)
+
+			if model.Value == "0" {
+				tag += template.HTML(`Random`)
+				return tag
+			}
+
+			if model.Value == "1" {
+				tag += template.HTML(`Minor`)
+				return tag
+			}
+
+			if model.Value == "2" {
+				tag += template.HTML(`Major`)
+				return tag
+			}
+
+			tag += template.HTML(`Undefined`)
+			return tag
+		})
+	info.AddField(lg("ProcessedDate"), "processeddate", db.Varchar)
+
+	info.SetTable("BonusLogs").
+		// SetSortField("datetime").
+		SetSortDesc()
+
+	return
+}
+
+// added by jaison
+func (s *SystemTable) GetTopLostPlayers(ctx *context.Context) (bonusLogsTable Table) {
+	fmt.Println("plugins.modules.table.generator.go GetBonusLogs")
+
+	bonusLogsTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
+
+	info := bonusLogsTable.GetInfo().AddXssJsFilter().HideFilterArea()
+
+	// #	Agent Name	Bonus	Processed	RegDate	Game Name	Player Name	Type	ProcessedDate
+	info.AddField("#", "id", db.Int).FieldHide()
+	info.AddField(lg("Agent Name"), "agentname", db.Varchar)
+	info.AddField(lg("Bonus"), "bonus", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			bonus, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`bonus`]), 64)
+
+			tag := template.HTML(``)
+			if err != nil {
+				tag += template.HTML(`Failed to parse value.`)
+				return tag
+			}
+
+			tag = template.HTML(fmt.Sprintf("%.2f", bonus))
+
+			return tag
+		})
+	info.AddField(lg("Processed"), "processed", db.Integer).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(``)
+
+			if model.Value == "0" {
+				tag += template.HTML(`Not Processed`)
+			} else {
+				tag += template.HTML(`Processed`)
+			}
+
+			return tag
+		})
+	info.AddField(lg("RegDate"), "regdate", db.Datetime)
+	info.AddField(lg("Game Name"), "gamename", db.Varchar)
+	info.AddField(lg("Player Name"), "playerid", db.Integer)
+	info.AddField(lg("Type"), "bonustype", db.Integer).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(``)
+
+			if model.Value == "0" {
+				tag += template.HTML(`Random`)
+				return tag
+			}
+
+			if model.Value == "1" {
+				tag += template.HTML(`Minor`)
+				return tag
+			}
+
+			if model.Value == "2" {
+				tag += template.HTML(`Major`)
+				return tag
+			}
+
+			tag += template.HTML(`Undefined`)
+			return tag
+		})
+	info.AddField(lg("ProcessedDate"), "processeddate", db.Varchar)
+
+	info.SetTable("BonusLogs").
+		// SetSortField("datetime").
+		SetSortDesc()
+
+	return
+}
+
+// added by jaison
+func (s *SystemTable) GetAgentReportLogs(ctx *context.Context) (agentReportTable Table) {
+	fmt.Println("plugins.modules.table.generator.go GetAgentReportLogs")
+
+	config := DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver)
+	config.PrimaryKey = PrimaryKey{
+		Type: db.Int,
+		Name: `Username`,
+	}
+
+	agentReportTable = NewDefaultTable(config)
+
+	info := agentReportTable.GetInfo().AddXssJsFilter().HideFilterArea().
+		HideDeleteButton().
+		HideDetailButton().
+		HideEditButton().
+		HideNewButton().
+		HideRowSelector().
+		HideExportButton().
+		HideFilterButton()
+
+	// AgentName Bet Win Report
+	// info.AddField("#", "id", db.Int)
+	info.AddField(lg("UserName"), "Username", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+
+			tag := template.HTML(`<a href="/Search/Index?username='` + model.Row[`Username`].(string) + `'&type=1">` + model.Row[`Username`].(string) + `</a>`)
+
+			return tag
+		})
+	info.AddField(lg("Bet"), "Bet", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			betField, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`Bet`]), 64)
+
+			tag := template.HTML(``)
+			if err != nil {
+				tag += template.HTML(`Failed to parse value.`)
+				return tag
+			}
+
+			tag = template.HTML(fmt.Sprintf("%.2f", betField))
+
+			return tag
+		})
+	info.AddField(lg("Win"), "Win", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			winField, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`Win`]), 64)
+
+			tag := template.HTML(``)
+			if err != nil {
+				tag += template.HTML(`Failed to parse value.`)
+				return tag
+			}
+
+			tag = template.HTML(fmt.Sprintf("%.2f", winField))
+
+			return tag
+		})
+	info.AddField(lg("Report"), "Report", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			reportField, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`Report`]), 64)
+
+			tag := template.HTML(``)
+
+			if err != nil {
+				tag += template.HTML(`Failed to parse value.`)
+				return tag
+			}
+
+			tag = template.HTML(fmt.Sprintf("%.2f", reportField))
+			return tag
+		})
+
+	info.SetTable("Reports").
+		SetSortField("Report").
+		SetSortAsc()
+
+	return
+}
+
+// added by jaison
+func (s *SystemTable) GetGameConfigs(ctx *context.Context) (gameConfigsTable Table) {
+	fmt.Println("plugins.modules.table.generator.go GetGameConfigs")
+	config := DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver)
+	// config.PrimaryKey = PrimaryKey{
+	// 	Type: db.Int,
+	// 	Name: `username`,
+	// }
+
+	gameConfigsTable = NewDefaultTable(config)
+
+	info := gameConfigsTable.GetInfo().AddXssJsFilter().HideFilterArea().
+		HideDeleteButton().
+		HideDetailButton().
+		HideEditButton().
+		HideNewButton().
+		HideRowSelector().
+		HideExportButton().
+		HideFilterButton()
+
+	info.SetSortAsc()
+
+	// #	Game Type	Game Name	GameID	PayoutReset	PayoutRate	EventRate	FreeSpinWinRate	RandomBonusLimit	AllowOnlineTableCustomize	AllowOpenClose	Operation
+	info.AddField("#", "id", db.Int)
+	info.AddField(lg("Game Type"), "gametype", db.Integer).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(``)
+			if model.Value == "1" {
+				tag += template.HTML(`<span style="color:blueviolet">Single Game</span>`)
+			} else {
+				tag += template.HTML(`<span style="color:red">Live Game</span>`)
+			}
+
+			return tag
+		})
+	info.AddField(lg("Game Name"), "gamename", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(model.Value)
+
+			if model.Row[`gameid`].(int64) == int64(29) {
+				tag += template.HTML(`<span style="color:red;">` + model.Value + `</span>`)
+			}
+			if model.Row[`gameid`].(int64) == int64(57) {
+				tag += template.HTML(`<span style="color:green">` + model.Value + `</span>`)
+			}
+			if model.Row[`gameid`].(int64) == int64(141) {
+				tag += template.HTML(`<span style="color:blue">` + model.Value + `</span>`)
+			}
+
+			return tag
+		})
+	info.AddField(lg("GameID"), "gameid", db.Varchar)
+	info.AddField(lg("PayoutReset"), "username", db.Integer).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(`
+				<div>
+					<input type="text" name="resetpercent" maxlength="8" style="width: 40px; vertical-align: middle; text-align: center" />
+					<button class="btn btn-primary btn-xs" name="payout_reset" data-gameid="` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" style="vertical-align: middle">ResetPayout</button>
+				</div>`)
+
+			return tag
+		})
+	info.AddField(lg("PayoutRate"), "winchance", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(`
+				<div>
+					<input type="text" value="` + model.Value + `" name="percent" maxlength="8" style="width: 50px; vertical-align: middle; text-align: center" />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+					<button class="btn btn-info btn-xs" name="game_update" style="vertical-align: middle">Update</button>
+					<input type="hidden" value="` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" name="game_id">
+				</div>`)
+
+			return tag
+		})
+	info.AddField(lg("HasEvent"), "hasevent", db.Integer).FieldHide()
+	info.AddField(lg("EventRate"), "eventrate", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(`<div>`)
+
+			if model.Row[`hasevent`].(int64) == int64(1) {
+				tag += template.HTML(`<input type="checkbox" name="hasevent" style="vertical-align: middle; display: none" id="hasevent` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" value="` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" checked="checked" />`)
+			} else {
+				tag += template.HTML(`<input type="checkbox" name="hasevent" style="vertical-align: middle; display: none" id="hasevent` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" value="` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" />`)
+			}
+
+			tag += template.HTML(`<input type="text" name="eventrate" value="` + model.Value + `" id="eventrate` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" style="width: 50px; vertical-align: middle; text-align: center" />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`)
+			tag += template.HTML(`<button class="btn btn-info btn-xs" name="eventrate_update" style="vertical-align: middle" id="eventrateupdate` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `">Update</button>`)
+			tag += template.HTML(`<input type="hidden" value="` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" name="game_id">`)
+			tag += template.HTML(`</div>`)
+
+			return tag
+		})
+	info.AddField(lg("HasFreespinWinrate"), "hasfreespinwinrate", db.Integer).FieldHide()
+	info.AddField(lg("FreeSpinWinRate"), "freespinwinrate", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(`<div>`)
+
+			if model.Row[`hasfreespinwinrate`].(int64) == int64(1) {
+				tag += template.HTML(`<input type="checkbox" name="hasfreespinwinrate" style="vertical-align: middle; display: none" id="hasfreespinwinrate` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" value="` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" checked="checked" />`)
+			} else {
+				tag += template.HTML(`<input type="checkbox" name="hasfreespinwinrate" style="vertical-align: middle; display: none" id="hasfreespinwinrate` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" value="` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" />`)
+			}
+
+			tag += template.HTML(`<input type="text" name="freespinwinrate" value="` + model.Value + `" id="freespinwinrate` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" style="width: 50px; vertical-align: middle; text-align: center" />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`)
+			tag += template.HTML(`<button class="btn btn-info btn-xs" name="freespinwinrate_update" style="vertical-align: middle" id="freespinwinrateupdate` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `">Update</button>`)
+			tag += template.HTML(`<input type="hidden" value="` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" name="game_id">`)
+			tag += template.HTML(`</div>`)
+
+			return tag
+		})
+	info.AddField(lg("HasRandomBonusLimit"), "hasrandombonuslimit", db.Integer).FieldHide()
+	info.AddField(lg("RandomBonusLimit"), "randombonuslimit", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(`<div>`)
+
+			if model.Row[`hasrandombonuslimit`].(int64) == int64(1) {
+				tag += template.HTML(`<input type="checkbox" name="hasrandombonuslimit" style="vertical-align: middle; display: none" id="hasrandombonuslimit` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" value="` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" checked="checked" />`)
+			} else {
+				tag += template.HTML(`<input type="checkbox" name="hasrandombonuslimit" style="vertical-align: middle; display: none" id="hasrandombonuslimit` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" value="` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" />`)
+			}
+
+			tag += template.HTML(`<input type="text" name="randombonuslimit" value="` + model.Value + `" id="randombonuslimit` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" style="width: 50px; vertical-align: middle; text-align: center" />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`)
+			tag += template.HTML(`<button class="btn btn-info btn-xs" name="randombonuslimit_update" style="vertical-align: middle" id="randombonuslimitupdate` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `">Update</button>`)
+			tag += template.HTML(`<input type="hidden" value="` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" name="game_id">`)
+			tag += template.HTML(`</div>`)
+
+			return tag
+		})
+	info.AddField(lg("TableSet"), "tableset", db.Integer).FieldHide()
+	info.AddField(lg("AllowOnlineTableCustomize"), "customize", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(`<div>`)
+
+			if model.Row[`gametype`].(int64) == int64(1) {
+				tag += template.HTML(`<input type="checkbox" name="dynamictable" style="vertical-align:middle;" disabled/>`)
+				tag += template.HTML(`<button class="btn btn-info btn-xs" name="dynamictable_update" style="vertical-align: middle" disabled id="dynamictable_update` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `">Update</button>`)
+			} else {
+				if model.Row[`tableset`].(int64) == int64(1) {
+					tag += template.HTML(`<input type="checkbox" name="dynamictable" style="vertical-align:middle;" checked="checked" />`)
+				} else {
+					tag += template.HTML(`<input type="checkbox" name="dynamictable" style="vertical-align:middle;" />`)
+				}
+				tag += template.HTML(`<button class="btn btn-info btn-xs" name="dynamictable_update" style="vertical-align: middle" id="dynamictable_update` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `">Update</button>`)
+			}
+
+			tag += template.HTML(`<input type="hidden" value="` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" name="game_id">`)
+			tag += template.HTML(`</div>`)
+
+			return tag
+		})
+	info.AddField(lg("AllowOpenClose"), "canclose", db.Integer).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(`<div>`)
+
+			if model.Value == "1" {
+				tag += template.HTML(`<input type="checkbox" name="cancloseset" style="vertical-align:middle;" checked="checked" />`)
+			} else {
+				tag += template.HTML(`<input type="checkbox" name="cancloseset" style="vertical-align:middle;" />`)
+			}
+
+			tag += template.HTML(`<button class="btn btn-info btn-xs" name="canclose_update" style="vertical-align: middle" id="canclose_update` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `">Update</button>`)
+			tag += template.HTML(`<input type="hidden" value="` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" name="game_id">`)
+			tag += template.HTML(`</div>`)
+
+			return tag
+		})
+	info.AddField(lg("Operation"), "openclose", db.Integer).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(`<div>`)
+
+			if model.Value == "1" {
+				tag += template.HTML(`<button type="button" class="btn btn-yahoo btn-xs" id="openclose` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" name="openclose" value="1" style="color: white; border-color: none">Close</button>`)
+				tag += template.HTML(`<input type="hidden" value="` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" name="game_id">`)
+				tag += template.HTML(`<button type="button" class="btn btn-danger btn-xs" id="del` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" name="del">Delete</button>`)
+			} else {
+				tag += template.HTML(`<button type="button" class="btn btn-facebook btn-xs" id="openclose` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" name="openclose" value="0" style="color: white; border-color: none">Open</button>`)
+				tag += template.HTML(`<input type="hidden" value="` + strconv.FormatInt(model.Row[`id`].(int64), 10) + `" name="game_id">`)
+				tag += template.HTML(`<button type="button" class="btn btn-danger btn-xs" name="del">Delete</button>`)
+			}
+
+			tag += template.HTML(`</div>`)
+
+			return tag
+		})
+
+	info.SetTable("Configs")
+	return
 }
 
 func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table) {
@@ -237,46 +1798,46 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 
 		return txErr
 	})
-	formList.SetInsertFn(func(values form2.Values) error {
-		if values.IsEmpty("name", "username", "password") {
-			return errors.New("username and password can not be empty")
-		}
+	// formList.SetInsertFn(func(values form2.Values) error {
+	// 	if values.IsEmpty("name", "username", "password") {
+	// 		return errors.New("username and password can not be empty")
+	// 	}
 
-		password := values.Get("password")
+	// 	password := values.Get("password")
 
-		if password != values.Get("password_again") {
-			return errors.New("password does not match")
-		}
+	// 	if password != values.Get("password_again") {
+	// 		return errors.New("password does not match")
+	// 	}
 
-		_, txErr := s.connection().WithTransaction(func(tx *sql.Tx) (e error, i map[string]interface{}) {
+	// 	_, txErr := s.connection().WithTransaction(func(tx *sql.Tx) (e error, i map[string]interface{}) {
 
-			user, createUserErr := models.User().WithTx(tx).SetConn(s.conn).New(values.Get("username"),
-				encodePassword([]byte(values.Get("password"))),
-				values.Get("name"),
-				values.Get("avatar"))
+	// 		user, createUserErr := models.User().WithTx(tx).SetConn(s.conn).New(values.Get("username"),
+	// 			encodePassword([]byte(values.Get("password"))),
+	// 			values.Get("name"),
+	// 			values.Get("avatar"))
 
-			if db.CheckError(createUserErr, db.INSERT) {
-				return createUserErr, nil
-			}
+	// 		if db.CheckError(createUserErr, db.INSERT) {
+	// 			return createUserErr, nil
+	// 		}
 
-			for i := 0; i < len(values["role_id[]"]); i++ {
-				_, addRoleErr := user.WithTx(tx).AddRole(values["role_id[]"][i])
-				if db.CheckError(addRoleErr, db.INSERT) {
-					return addRoleErr, nil
-				}
-			}
+	// 		for i := 0; i < len(values["role_id[]"]); i++ {
+	// 			_, addRoleErr := user.WithTx(tx).AddRole(values["role_id[]"][i])
+	// 			if db.CheckError(addRoleErr, db.INSERT) {
+	// 				return addRoleErr, nil
+	// 			}
+	// 		}
 
-			for i := 0; i < len(values["permission_id[]"]); i++ {
-				_, addPermissionErr := user.WithTx(tx).AddPermission(values["permission_id[]"][i])
-				if db.CheckError(addPermissionErr, db.INSERT) {
-					return addPermissionErr, nil
-				}
-			}
+	// 		for i := 0; i < len(values["permission_id[]"]); i++ {
+	// 			_, addPermissionErr := user.WithTx(tx).AddPermission(values["permission_id[]"][i])
+	// 			if db.CheckError(addPermissionErr, db.INSERT) {
+	// 				return addPermissionErr, nil
+	// 			}
+	// 		}
 
-			return nil, nil
-		})
-		return txErr
-	})
+	// 		return nil, nil
+	// 	})
+	// 	return txErr
+	// })
 
 	detail := managerTable.GetDetail()
 	detail.AddField("ID", "id", db.Int)
@@ -476,32 +2037,32 @@ func (s *SystemTable) GetNormalManagerTable(ctx *context.Context) (managerTable 
 
 		return nil
 	})
-	formList.SetInsertFn(func(values form2.Values) error {
-		if values.IsEmpty("name", "username", "password") {
-			return errors.New("username and password can not be empty")
-		}
+	// formList.SetInsertFn(func(values form2.Values) error {
+	// 	if values.IsEmpty("name", "username", "password") {
+	// 		return errors.New("username and password can not be empty")
+	// 	}
 
-		password := values.Get("password")
+	// 	password := values.Get("password")
 
-		if password != values.Get("password_again") {
-			return errors.New("password does not match")
-		}
+	// 	if password != values.Get("password_again") {
+	// 		return errors.New("password does not match")
+	// 	}
 
-		if values.Has("permission", "role") {
-			return errors.New(errs.NoPermission)
-		}
+	// 	if values.Has("permission", "role") {
+	// 		return errors.New(errs.NoPermission)
+	// 	}
 
-		_, createUserErr := models.User().SetConn(s.conn).New(values.Get("username"),
-			encodePassword([]byte(values.Get("password"))),
-			values.Get("name"),
-			values.Get("avatar"))
+	// 	_, createUserErr := models.User().SetConn(s.conn).New(values.Get("username"),
+	// 		encodePassword([]byte(values.Get("password"))),
+	// 		values.Get("name"),
+	// 		values.Get("avatar"))
 
-		if db.CheckError(createUserErr, db.INSERT) {
-			return createUserErr
-		}
+	// 	if db.CheckError(createUserErr, db.INSERT) {
+	// 		return createUserErr
+	// 	}
 
-		return nil
-	})
+	// 	return nil
+	// })
 
 	return
 }
@@ -1394,30 +2955,30 @@ func (s *SystemTable) GetGenerateForm(ctx *context.Context) (generateTool Table)
 
 				return true, "ok", [][]string{headName, fieldName, dbTypeList, formTypeList}
 			}, `
-$("tbody.fields-table").find("tr").remove();
-let tpl = $("template.fields-tpl").html();
-for (let i = 0; i < data.data[0].length; i++) {
-	$("tbody.fields-table").append(tpl);
-}
-let trs = $("tbody.fields-table").find("tr");
-for (let i = 0; i < data.data[0].length; i++) {
-	$(trs[i]).find('.field_head').val(data.data[0][i]);
-	$(trs[i]).find('.field_name').val(data.data[1][i]);
-	$(trs[i]).find('select.field_db_type').val(data.data[2][i]).select2();
-}
-$("tbody.fields_form-table").find("tr").remove();
-let tpl_form = $("template.fields_form-tpl").html();
-for (let i = 0; i < data.data[0].length; i++) {
-	$("tbody.fields_form-table").append(tpl_form);
-}
-let trs_form = $("tbody.fields_form-table").find("tr");
-for (let i = 0; i < data.data[0].length; i++) {
-	$(trs_form[i]).find('.field_head_form').val(data.data[0][i]);
-	$(trs_form[i]).find('.field_name_form').val(data.data[1][i]);
-	$(trs_form[i]).find('select.field_db_type_form').val(data.data[2][i]).select2();
-	$(trs_form[i]).find('select.field_form_type_form').val(data.data[3][i]).select2();
-}
-`, `"conn":$('.conn').val(),`)
+				$("tbody.fields-table").find("tr").remove();
+				let tpl = $("template.fields-tpl").html();
+				for (let i = 0; i < data.data[0].length; i++) {
+					$("tbody.fields-table").append(tpl);
+				}
+				let trs = $("tbody.fields-table").find("tr");
+				for (let i = 0; i < data.data[0].length; i++) {
+					$(trs[i]).find('.field_head').val(data.data[0][i]);
+					$(trs[i]).find('.field_name').val(data.data[1][i]);
+					$(trs[i]).find('select.field_db_type').val(data.data[2][i]).select2();
+				}
+				$("tbody.fields_form-table").find("tr").remove();
+				let tpl_form = $("template.fields_form-tpl").html();
+				for (let i = 0; i < data.data[0].length; i++) {
+					$("tbody.fields_form-table").append(tpl_form);
+				}
+				let trs_form = $("tbody.fields_form-table").find("tr");
+				for (let i = 0; i < data.data[0].length; i++) {
+					$(trs_form[i]).find('.field_head_form').val(data.data[0][i]);
+					$(trs_form[i]).find('.field_name_form').val(data.data[1][i]);
+					$(trs_form[i]).find('select.field_db_type_form').val(data.data[2][i]).select2();
+					$(trs_form[i]).find('select.field_form_type_form').val(data.data[3][i]).select2();
+				}
+				`, `"conn":$('.conn').val(),`)
 	formList.AddField(lgWithScore("package", "tool"), "package", db.Varchar, form.Text).FieldDefault("tables")
 	formList.AddField(lgWithScore("primarykey", "tool"), "pk", db.Varchar, form.Text).FieldDefault("id")
 

@@ -4,6 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"html"
+	"html/template"
+	"net/http"
+	"strconv"
+	"strings"
+
 	"github.com/HongJaison/go-admin3/context"
 	"github.com/HongJaison/go-admin3/modules/config"
 	"github.com/HongJaison/go-admin3/modules/constant"
@@ -14,11 +20,6 @@ import (
 	"github.com/HongJaison/go-admin3/plugins/admin/modules"
 	"github.com/HongJaison/go-admin3/plugins/admin/modules/form"
 	form2 "github.com/HongJaison/go-admin3/template/types/form"
-	"html"
-	"html/template"
-	"net/http"
-	"strconv"
-	"strings"
 )
 
 type FieldOption struct {
@@ -1501,6 +1502,7 @@ func (f *FormPanel) EnableAjax(msgs ...string) *FormPanel {
 			jump = `"` + msgs[2] + `"`
 		}
 		f.AjaxSuccessJS = template.JS(`
+		console.log(data);
 	if (typeof (data) === "string") {
 	    data = JSON.parse(data);
 	}

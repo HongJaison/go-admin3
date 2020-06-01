@@ -33,6 +33,81 @@ import (
 	"github.com/HongJaison/html"
 )
 
+// added by jaison
+func (h *Handler) ShowManagementTable(ctx *context.Context) {
+	panel1 := h.table("agentslist", ctx)
+	params1 := parameter.GetParam(ctx.Request.URL, panel1.GetInfo().DefaultPageSize, panel1.GetInfo().SortField, panel1.GetInfo().GetSort())
+	// buf1 := h.showTable(ctx, "agentslist", params1, panel1)
+
+	panel2 := h.table("playerslist", ctx)
+	params2 := parameter.GetParam(ctx.Request.URL, panel2.GetInfo().DefaultPageSize, panel2.GetInfo().SortField, panel2.GetInfo().GetSort())
+	// buf2 := h.showTable(ctx, "playerslist", params2, panel2)
+
+	title := template2.HTML(`
+		<h1 class="hidden-xs">
+			Account List
+			<small>
+				<a href="#" name="reload_all" target="_self" onclick="javascript:reloadList();">
+					<i class="fa fa-refresh"></i>
+					Refresh
+				</a>
+			</small>
+		</h1>
+		<ol class="breadcrumb hidden-md hidden-lg hidden-sm">
+			<li>
+				Account List&nbsp;&nbsp;&nbsp;
+				<a href="#" target="_self" onclick="" name="reload_all">
+					<i class="fa fa-refresh"></i>
+					Refresh
+				</a>
+			</li>
+		</ol>`)
+
+	prefixes := []string{"agentslist", "playerslist"}
+	parameters := []parameter.Parameters{params1, params2}
+	panels := []table.Table{panel1, panel2}
+	themes := []string{"primary", "warning"}
+	tableIds := []string{"tb_agent", "tb_player"}
+
+	parentIds := []string{"0", "1"}
+	overlayIds := []string{"overlay_agent", "overlay_player"}
+
+	customJS := template2.JS(``)
+
+	buf := h.showCustomTable(ctx, title, template2.HTML(``), prefixes, parameters, panels, themes, tableIds, parentIds, overlayIds, customJS)
+
+	ctx.HTML(http.StatusOK, buf.String())
+}
+
+// added by jaison
+func (h *Handler) InGameUsersTable(ctx *context.Context) {
+	panel := h.table("ingameusers", ctx)
+	params := parameter.GetParam(ctx.Request.URL, panel.GetInfo().DefaultPageSize, panel.GetInfo().SortField, panel.GetInfo().GetSort())
+
+	title := template2.HTML(`
+		<h1 class="hidden-xs">
+			InGame User List
+		</h1>
+		<ol class="breadcrumb hidden-md hidden-lg hidden-sm">
+			<li>InGame User List</li>
+		</ol>`)
+
+	prefixes := []string{"ingameusers"}
+	parameters := []parameter.Parameters{params}
+	panels := []table.Table{panel}
+	themes := []string{"warning"}
+	tableIds := []string{"tb_ingameusers"}
+
+	parentIds := []string{""}
+	overlayIds := []string{"overlay_player"}
+
+	customJS := template2.JS(``)
+
+	buf := h.showCustomTable(ctx, title, template2.HTML(``), prefixes, parameters, panels, themes, tableIds, parentIds, overlayIds, customJS)
+
+	ctx.HTML(http.StatusOK, buf.String())
+}
+
 // ShowInfo show info page.
 func (h *Handler) ShowInfo(ctx *context.Context) {
 
@@ -64,11 +139,48 @@ func (h *Handler) ShowInfo(ctx *context.Context) {
 
 func (h *Handler) showTableData(ctx *context.Context, prefix string, params parameter.Parameters,
 	panel table.Table, urlNamePrefix string) (table.Table, table.PanelInfo, []string, error) {
+	fmt.Println(`plugins/admin/controller/show.go/showTableData`)
 	if panel == nil {
 		panel = h.table(prefix, ctx)
 	}
 
 	panelInfo, err := panel.GetData(params.WithIsAll(false))
+
+	if err != nil {
+		return panel, panelInfo, nil, err
+	}
+
+	paramStr := params.DeleteIsAll().GetRouteParamStr()
+
+	editUrl := modules.AorEmpty(!panel.GetInfo().IsHideEditButton, h.routePathWithPrefix(urlNamePrefix+"show_edit", prefix)+paramStr)
+	newUrl := modules.AorEmpty(!panel.GetInfo().IsHideNewButton, h.routePathWithPrefix(urlNamePrefix+"show_new", prefix)+paramStr)
+	deleteUrl := modules.AorEmpty(!panel.GetInfo().IsHideDeleteButton, h.routePathWithPrefix(urlNamePrefix+"delete", prefix))
+	exportUrl := modules.AorEmpty(!panel.GetInfo().IsHideExportButton, h.routePathWithPrefix(urlNamePrefix+"export", prefix)+paramStr)
+	detailUrl := modules.AorEmpty(!panel.GetInfo().IsHideDetailButton, h.routePathWithPrefix(urlNamePrefix+"detail", prefix)+paramStr)
+
+	infoUrl := h.routePathWithPrefix(urlNamePrefix+"info", prefix)
+	updateUrl := h.routePathWithPrefix(urlNamePrefix+"update", prefix)
+
+	user := auth.Auth(ctx)
+
+	editUrl = user.GetCheckPermissionByUrlMethod(editUrl, h.route(urlNamePrefix+"show_edit").Method())
+	newUrl = user.GetCheckPermissionByUrlMethod(newUrl, h.route(urlNamePrefix+"show_new").Method())
+	deleteUrl = user.GetCheckPermissionByUrlMethod(deleteUrl, h.route(urlNamePrefix+"delete").Method())
+	exportUrl = user.GetCheckPermissionByUrlMethod(exportUrl, h.route(urlNamePrefix+"export").Method())
+	detailUrl = user.GetCheckPermissionByUrlMethod(detailUrl, h.route(urlNamePrefix+"detail").Method())
+
+	return panel, panelInfo, []string{editUrl, newUrl, deleteUrl, exportUrl, detailUrl, infoUrl, updateUrl}, nil
+}
+
+// added by jaison
+func (h *Handler) showTableDataWithRawQuery(ctx *context.Context, prefix string, query string, params parameter.Parameters,
+	panel table.Table, urlNamePrefix string) (table.Table, table.PanelInfo, []string, error) {
+	fmt.Println(`plugins/admin/controller/show.go/showTableDataWithRawQuery`)
+	if panel == nil {
+		panel = h.table(prefix, ctx)
+	}
+
+	panelInfo, err := panel.GetDataWithRawQuery(query, params.WithIsAll(false))
 
 	if err != nil {
 		return panel, panelInfo, nil, err
@@ -282,6 +394,243 @@ func (h *Handler) showTable(ctx *context.Context, prefix string, params paramete
 		Description: template2.HTML(panelInfo.Description),
 		Title:       modules.AorBHTML(isNotIframe, template2.HTML(panelInfo.Title), ""),
 	}, params.Animation)
+}
+
+// added by jaison
+func (h *Handler) showCustomTable(ctx *context.Context,
+	titleHtml template2.HTML,
+	descriptionHtml template2.HTML,
+	prefixes []string,
+	parameters []parameter.Parameters, panels []table.Table, themes []string, tableIds []string, parentIds []string, overlayIds []string,
+	customJS template2.JS) *bytes.Buffer {
+	// components := template.Default()
+
+	htmlContent := template2.HTML(``)
+
+	user := auth.Auth(ctx)
+	eachContent := template2.HTML(``)
+
+	for key, _ := range prefixes {
+		prefix := prefixes[key]
+		params := parameters[key]
+		panel := panels[key]
+		theme := themes[key]
+		tableId := tableIds[key]
+		parentId := parentIds[key]
+		overlayId := overlayIds[key]
+
+		panel, panelInfo, urls, err := h.showTableData(ctx, prefix, params, panel, "")
+
+		if err != nil {
+			return h.Execute(ctx, auth.Auth(ctx), types.Panel{
+				Content: aAlert().SetTitle(errors.MsgWithIcon).
+					SetTheme("warning").
+					SetContent(template2.HTML(err.Error())).
+					GetContent(),
+				Description: template2.HTML(errors.Msg),
+				Title:       template2.HTML(errors.Msg),
+			}, params.Animation)
+		}
+
+		callBack := panel.GetLoadFinishedCallBack()
+
+		if callBack != nil {
+			callBack(panelInfo)
+		}
+
+		editUrl, newUrl, deleteUrl, exportUrl, detailUrl, infoUrl,
+			updateUrl := urls[0], urls[1], urls[2], urls[3], urls[4], urls[5], urls[6]
+
+		var (
+			body       template2.HTML
+			dataTable  types.DataTableAttribute
+			info       = panel.GetInfo()
+			actionBtns = info.Action
+			actionJs   template2.JS
+			allBtns    = make(types.Buttons, 0)
+		)
+
+		for _, b := range info.Buttons {
+			if b.URL() == "" || b.METHOD() == "" || user.CheckPermissionByUrlMethod(b.URL(), b.METHOD(), url.Values{}) {
+				allBtns = append(allBtns, b)
+			}
+		}
+
+		btns, btnsJs := allBtns.Content()
+
+		allActionBtns := make(types.Buttons, 0)
+
+		for _, b := range info.ActionButtons {
+			if b.URL() == "" || b.METHOD() == "" || user.CheckPermissionByUrlMethod(b.URL(), b.METHOD(), url.Values{}) {
+				allActionBtns = append(allActionBtns, b)
+			}
+		}
+
+		if actionBtns == template.HTML("") && len(allActionBtns) > 0 {
+
+			ext := template.HTML("")
+			if deleteUrl != "" {
+				ext = html.LiEl().SetClass("divider").Get()
+				allActionBtns = append([]types.Button{types.GetActionButton(language.GetFromHtml("delete"),
+					types.NewDefaultAction(`data-id='{{.Id}}' style="cursor: pointer;"`,
+						ext, "", ""), "grid-row-delete")}, allActionBtns...)
+			}
+			ext = template.HTML("")
+			if detailUrl != "" {
+				if editUrl == "" && deleteUrl == "" {
+					ext = html.LiEl().SetClass("divider").Get()
+				}
+				allActionBtns = append([]types.Button{types.GetActionButton(language.GetFromHtml("detail"),
+					action.Jump(detailUrl+"&"+constant.DetailPKKey+"={{.Id}}", ext))}, allActionBtns...)
+			}
+			if editUrl != "" {
+				if detailUrl == "" && deleteUrl == "" {
+					ext = html.LiEl().SetClass("divider").Get()
+				}
+				allActionBtns = append([]types.Button{types.GetActionButton(language.GetFromHtml("edit"),
+					action.Jump(editUrl+"&"+constant.EditPKKey+"={{.Id}}", ext))}, allActionBtns...)
+			}
+
+			var content template2.HTML
+			content, actionJs = allActionBtns.Content()
+
+			actionBtns = html.Div(
+				html.A(icon.Icon(icon.EllipsisV),
+					html.M{"color": "#676565"},
+					html.M{"class": "dropdown-toggle", "href": "#", "data-toggle": "dropdown"},
+				)+html.Ul(content,
+					html.M{"min-width": "20px !important", "left": "-32px", "overflow": "hidden"},
+					html.M{"class": "dropdown-menu", "role": "menu", "aria-labelledby": "dLabel"}),
+				html.M{"text-align": "center"}, html.M{"class": "dropdown"})
+		}
+
+		if info.TabGroups.Valid() {
+
+			dataTable = aDataTable().
+				SetThead(panelInfo.Thead).
+				SetDeleteUrl(deleteUrl).
+				SetNewUrl(newUrl).
+				SetExportUrl(exportUrl)
+
+			var (
+				tabsHtml    = make([]map[string]template2.HTML, len(info.TabHeaders))
+				infoListArr = panelInfo.InfoList.GroupBy(info.TabGroups)
+				theadArr    = panelInfo.Thead.GroupBy(info.TabGroups)
+			)
+			for key, header := range info.TabHeaders {
+				tabsHtml[key] = map[string]template2.HTML{
+					"title": template2.HTML(header),
+					"content": aDataTable().
+						SetInfoList(infoListArr[key]).
+						SetInfoUrl(infoUrl).
+						SetButtons(btns).
+						SetActionJs(btnsJs + actionJs).
+						SetHasFilter(len(panelInfo.FilterFormData) > 0).
+						SetAction(actionBtns).
+						SetIsTab(key != 0).
+						SetPrimaryKey(panel.GetPrimaryKey().Name).
+						SetThead(theadArr[key]).
+						SetHideRowSelector(info.IsHideRowSelector).
+						SetLayout(info.TableLayout).
+						SetExportUrl(exportUrl).
+						SetNewUrl(newUrl).
+						SetSortUrl(params.GetFixedParamStrWithoutSort()).
+						SetEditUrl(editUrl).
+						SetUpdateUrl(updateUrl).
+						SetDetailUrl(detailUrl).
+						SetDeleteUrl(deleteUrl).
+						GetContent(),
+				}
+			}
+			body = aTab().SetData(tabsHtml).GetContent()
+		} else {
+			dataTable = aDataTable().
+				SetInfoList(panelInfo.InfoList).
+				SetInfoUrl(infoUrl).
+				SetButtons(btns).
+				SetLayout(info.TableLayout).
+				// modified by jaison
+				SetActionJs(btnsJs + actionJs + customJS).
+				SetAction(actionBtns).
+				SetHasFilter(len(panelInfo.FilterFormData) > 0).
+				SetPrimaryKey(panel.GetPrimaryKey().Name).
+				SetExportUrl(exportUrl).
+				SetHideRowSelector(info.IsHideRowSelector).
+				SetHideFilterArea(info.IsHideFilterArea).
+				SetNewUrl(newUrl).
+				SetEditUrl(editUrl).
+				SetSortUrl(params.GetFixedParamStrWithoutSort()).
+				SetUpdateUrl(updateUrl).
+				SetDetailUrl(detailUrl).
+				SetDeleteUrl(deleteUrl).
+
+				// added by jaison
+				SetStyle(`bordered table-striped`).
+				SetTableID(tableId).
+				SetIsTab(true).
+				SetHideThead(false).
+				SetThead(panelInfo.Thead)
+				// SetThead(types.Thead{
+				// 	types.TheadItem{Head: "#"},
+				// 	types.TheadItem{Head: "UserName"},
+				// 	types.TheadItem{Head: "Name"},
+				// 	types.TheadItem{Head: "Score"},
+				// 	types.TheadItem{Head: "Operation"},
+				// })
+
+			body = dataTable.GetContent()
+		}
+
+		body = template.HTML(`<div class="table-responsive">`) + body + template.HTML(`</div>`)
+
+		isNotIframe := ctx.Query(constant.IframeKey) != "true"
+
+		paginator := panelInfo.Paginator
+		paginator = paginator.SetHideEntriesInfo()
+
+		boxModel := aBox().
+			SetBody(body).
+			SetHeader(dataTable.GetDataTableHeader() + info.HeaderHtml).
+			WithHeadBorder().
+			SetIframeStyle(!isNotIframe).
+			SetFooter(paginator.GetContent() + info.FooterHtml).
+			// commented by jaison
+			// SetNoPadding().
+			// added by jaison
+			SetTheme(theme).
+			SetStyle("display: block;").
+			SetParentInput(parentId).
+			SetOverlayLoad(overlayId)
+
+		if len(panelInfo.FilterFormData) > 0 {
+			boxModel = boxModel.SetSecondHeaderClass("filter-area").
+				SetSecondHeader(aForm().
+					SetContent(panelInfo.FilterFormData).
+					SetPrefix(h.config.PrefixFixSlash()).
+					SetInputWidth(info.FilterFormInputWidth).
+					SetHeadWidth(info.FilterFormHeadWidth).
+					SetMethod("get").
+					SetLayout(info.FilterFormLayout).
+					SetUrl(infoUrl). //  + params.GetFixedParamStrWithoutColumnsAndPage()
+					SetHiddenFields(map[string]string{
+						form.NoAnimationKey: "true",
+					}).
+					SetOperationFooter(filterFormFooter(infoUrl)).
+					GetContent())
+		}
+		eachContent = boxModel.GetContent()
+
+		// htmlContent += components.Row().SetContent(content).GetContent()
+		htmlContent += eachContent
+	}
+
+	showPanel := types.Panel{
+		Content:     htmlContent,
+		Description: template2.HTML(descriptionHtml),
+		Title:       template2.HTML(titleHtml),
+	}
+
+	return h.Execute(ctx, user, showPanel, true)
 }
 
 // Assets return front-end assets according the request path.

@@ -4,6 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
+	"io/ioutil"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/HongJaison/go-admin3/modules/db"
 	"github.com/HongJaison/go-admin3/modules/db/dialect"
 	errs "github.com/HongJaison/go-admin3/modules/errors"
@@ -15,12 +22,6 @@ import (
 	"github.com/HongJaison/go-admin3/plugins/admin/modules/paginator"
 	"github.com/HongJaison/go-admin3/plugins/admin/modules/parameter"
 	"github.com/HongJaison/go-admin3/template/types"
-	"html/template"
-	"io/ioutil"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type DefaultTable struct {
@@ -45,6 +46,9 @@ func NewDefaultTable(cfgs ...Config) Table {
 
 	return DefaultTable{
 		BaseTable: &BaseTable{
+			// added by jaison
+			LoadFinishedCallBack: nil,
+
 			Info:           types.NewInfoPanel(cfg.PrimaryKey.Name),
 			Form:           types.NewFormPanel(),
 			Detail:         types.NewInfoPanel(cfg.PrimaryKey.Name),
@@ -118,6 +122,67 @@ func (tb DefaultTable) GetData(params parameter.Parameters) (PanelInfo, error) {
 		return tb.getAllDataFromDatabase(params)
 	} else {
 		return tb.getDataFromDatabase(params)
+	}
+
+	infoList := make(types.InfoList, 0)
+
+	for i := 0; i < len(data); i++ {
+		infoList = append(infoList, tb.getTempModelData(data[i], params, []string{}))
+	}
+
+	thead, _, _, _, _, filterForm := tb.getTheadAndFilterForm(params, []string{})
+
+	endTime := time.Now()
+
+	extraInfo := ""
+
+	if !tb.Info.IsHideQueryInfo {
+		extraInfo = fmt.Sprintf("<b>" + language.Get("query time") + ": </b>" +
+			fmt.Sprintf("%.3fms", endTime.Sub(beginTime).Seconds()*1000))
+	}
+
+	return PanelInfo{
+		Thead:    thead,
+		InfoList: infoList,
+		Paginator: paginator.Get(paginator.Config{
+			Size:         size,
+			Param:        params,
+			PageSizeList: tb.Info.GetPageSizeList(),
+		}).SetExtraInfo(template.HTML(extraInfo)),
+		Title:          tb.Info.Title,
+		FilterFormData: filterForm,
+		Description:    tb.Info.Description,
+	}, nil
+}
+
+// added by jaison
+func (tb DefaultTable) GetDataWithRawQuery(query string, params parameter.Parameters) (PanelInfo, error) {
+	fmt.Println(`plugins/admin/modules/table/default.go/GetDataWithRawQuery`)
+	fmt.Println(query)
+
+	var (
+		data      []map[string]interface{}
+		size      int
+		beginTime = time.Now()
+	)
+
+	if tb.Info.QueryFilterFn != nil {
+		ids, stop := tb.Info.QueryFilterFn(params, tb.db())
+		if stop {
+			return tb.GetDataWithIds(params.WithPKs(ids...))
+		}
+	}
+
+	if tb.getDataFun != nil {
+		data, size = tb.getDataFun(params)
+	} else if tb.sourceURL != "" {
+		data, size = tb.getDataFromURL(params)
+	} else if tb.Info.GetDataFn != nil {
+		data, size = tb.Info.GetDataFn(params)
+	} else if params.IsAll() {
+		return tb.getAllDataFromDBWithRawQuery(query, params)
+	} else {
+		return tb.getAllDataFromDBWithRawQuery(query, params)
 	}
 
 	infoList := make(types.InfoList, 0)
@@ -237,14 +302,12 @@ func (tb DefaultTable) GetDataWithIds(params parameter.Parameters) (PanelInfo, e
 }
 
 func (tb DefaultTable) getTempModelData(res map[string]interface{}, params parameter.Parameters, columns Columns) map[string]types.InfoItem {
-
 	var tempModelData = make(map[string]types.InfoItem)
 	headField := ""
 
 	primaryKeyValue := db.GetValueFromDatabaseType(tb.PrimaryKey.Type, res[tb.PrimaryKey.Name], len(columns) == 0)
 
 	for _, field := range tb.Info.FieldList {
-
 		headField = field.Field
 
 		if field.Joins.Valid() {
@@ -295,6 +358,7 @@ func (tb DefaultTable) getTempModelData(res map[string]interface{}, params param
 	}
 
 	primaryKeyField := tb.Info.FieldList.GetFieldByFieldName(tb.PrimaryKey.Name)
+
 	value := primaryKeyField.ToDisplay(types.FieldModel{
 		ID:    primaryKeyValue.String(),
 		Value: primaryKeyValue.String(),
@@ -360,6 +424,49 @@ func (tb DefaultTable) getAllDataFromDatabase(params parameter.Parameters) (Pane
 	logger.LogSQL(queryCmd, []interface{}{})
 
 	res, err := connection.QueryWithConnection(tb.connection, queryCmd, whereArgs...)
+
+	if err != nil {
+		return PanelInfo{}, err
+	}
+
+	infoList := make([]map[string]types.InfoItem, 0)
+
+	for i := 0; i < len(res); i++ {
+		infoList = append(infoList, tb.getTempModelData(res[i], params, columns))
+	}
+
+	return PanelInfo{
+		InfoList:    infoList,
+		Thead:       thead,
+		Title:       tb.Info.Title,
+		Description: tb.Info.Description,
+	}, nil
+}
+
+// added by jaison
+func (tb DefaultTable) getAllDataFromDBWithRawQuery(queryCmd string, params parameter.Parameters) (PanelInfo, error) {
+	fmt.Println(`plugins/admin/modules/table/default.go/getAllDataFromDBWithRawQuery`)
+
+	var (
+		connection = tb.db()
+	)
+
+	columns, _ := tb.getColumns(tb.Info.Table)
+
+	thead, fields, _ := tb.Info.FieldList.GetThead(types.TableInfo{
+		Table:      tb.Info.Table,
+		Delimiter:  tb.db().GetDelimiter(),
+		Driver:     tb.connectionDriver,
+		PrimaryKey: tb.PrimaryKey.Name,
+	}, params, columns)
+
+	fields += tb.Info.Table + "." + modules.FilterField(tb.PrimaryKey.Name, connection.GetDelimiter())
+
+	params.SortField = tb.PrimaryKey.Name
+
+	logger.LogSQL(queryCmd, []interface{}{})
+
+	res, err := connection.QueryWithConnection(tb.connection, queryCmd, make([]interface{}, 0)...)
 
 	if err != nil {
 		return PanelInfo{}, err
@@ -464,7 +571,6 @@ func (tb DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelIn
 		}
 		wheres = wheres[:len(wheres)-1]
 	} else {
-
 		// parameter
 		wheres, whereArgs, existKeys = params.Statement(wheres, tb.Info.Table, connection.GetDelimiter(), whereArgs, columns, existKeys,
 			tb.Info.FieldList.GetFieldFilterProcessValue)
@@ -502,6 +608,15 @@ func (tb DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelIn
 	}
 
 	logger.LogSQL(queryCmd, args)
+
+	// fmt.Println(`getDataFromDatabase`)
+	// fmt.Println(queryStatement)
+	// fmt.Println(queryCmd)
+	// fmt.Println(args)
+	// fmt.Println(ids)
+	// fmt.Println(joins)
+	// fmt.Println(wheres)
+	// fmt.Println(groupBy)
 
 	res, err := connection.QueryWithConnection(tb.connection, queryCmd, args...)
 

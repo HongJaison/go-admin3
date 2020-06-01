@@ -6,7 +6,7 @@ import (
 	"os/signal"
 
 	_ "github.com/HongJaison/go-admin3/adapter/beego"
-	_ "github.com/HongJaison/go-admin3/modules/db/drivers/mysql"
+	_ "github.com/HongJaison/go-admin3/modules/db/drivers/mssql"
 
 	"github.com/HongJaison/go-admin3/engine"
 	"github.com/HongJaison/go-admin3/examples/datamodel"
@@ -27,14 +27,14 @@ func main() {
 	cfg := config.Config{
 		Databases: config.DatabaseList{
 			"default": {
-				Host:       "127.0.0.1",
-				Port:       "3306",
-				User:       "root",
-				Pwd:        "",
-				Name:       "godmin",
+				Host:       "172.16.74.222",
+				Port:       "1433",
+				User:       "sa",
+				Pwd:        "Akduifwkro1988",
+				Name:       "goadmin_site",
 				MaxIdleCon: 50,
 				MaxOpenCon: 150,
-				Driver:     config.DriverMysql,
+				Driver:     config.DriverMssql,
 			},
 		},
 		Store: config.Store{
@@ -88,7 +88,7 @@ func main() {
 	eng.HTML("GET", "/admin", datamodel.GetContent)
 
 	beego.BConfig.Listen.HTTPAddr = "127.0.0.1"
-	beego.BConfig.Listen.HTTPPort = 9087
+	beego.BConfig.Listen.HTTPPort = 9088
 	go app.Run()
 
 	quit := make(chan os.Signal)

@@ -1,12 +1,13 @@
 package parameter
 
 import (
-	"github.com/HongJaison/go-admin3/plugins/admin/modules"
-	"github.com/HongJaison/go-admin3/plugins/admin/modules/constant"
-	"github.com/HongJaison/go-admin3/plugins/admin/modules/form"
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/HongJaison/go-admin3/plugins/admin/modules"
+	"github.com/HongJaison/go-admin3/plugins/admin/modules/constant"
+	"github.com/HongJaison/go-admin3/plugins/admin/modules/form"
 )
 
 type Parameters struct {
@@ -328,9 +329,9 @@ func (param Parameters) GetFixedParamStrWithoutSort() string {
 
 func (param Parameters) Statement(wheres, table, delimiter string, whereArgs []interface{}, columns, existKeys []string,
 	filterProcess func(string, string, string) string) (string, []interface{}, []string) {
+
 	var multiKey = make(map[string]uint8)
 	for key, value := range param.Fields {
-
 		keyIndexSuffix := ""
 
 		keyArr := strings.Split(key, FilterParamCountInfix)

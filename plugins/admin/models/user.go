@@ -2,16 +2,17 @@ package models
 
 import (
 	"database/sql"
-	"github.com/HongJaison/go-admin3/modules/config"
-	"github.com/HongJaison/go-admin3/modules/db"
-	"github.com/HongJaison/go-admin3/modules/db/dialect"
-	"github.com/HongJaison/go-admin3/modules/logger"
-	"github.com/HongJaison/go-admin3/plugins/admin/modules/constant"
 	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/HongJaison/go-admin3/modules/config"
+	"github.com/HongJaison/go-admin3/modules/db"
+	"github.com/HongJaison/go-admin3/modules/db/dialect"
+	"github.com/HongJaison/go-admin3/modules/logger"
+	"github.com/HongJaison/go-admin3/plugins/admin/modules/constant"
 )
 
 // UserModel is user model structure.
@@ -30,8 +31,19 @@ type UserModel struct {
 	Level         string            `json:"level"`
 	LevelName     string            `json:"level_name"`
 
+	Country     string `json:"country"`
+	Tel         string `json:"tel"`
+	Description string `json:"description"`
+
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
+}
+
+// added by jaison
+// FindByName return a default user model of given name.
+func (t UserModel) FindByName(name interface{}) UserModel {
+	item, _ := t.Table(t.TableName).Where("name", "=", name).First()
+	return t.MapToModel(item)
 }
 
 // User return a default user model.
@@ -345,13 +357,17 @@ func (t UserModel) WithMenus() UserModel {
 }
 
 // New create a user model.
-func (t UserModel) New(username, password, name, avatar string) (UserModel, error) {
+func (t UserModel) New(username, password, name, country, tel, description, avatar string, score float64) (UserModel, error) {
 
 	id, err := t.WithTx(t.Tx).Table(t.TableName).Insert(dialect.H{
-		"username": username,
-		"password": password,
-		"name":     name,
-		"avatar":   avatar,
+		"username":    username,
+		"password":    password,
+		"name":        name,
+		"country":     country,
+		"tel":         tel,
+		"description": description,
+		"score":       score,
+		// "avatar":      avatar,
 	})
 
 	t.Id = id
@@ -359,6 +375,10 @@ func (t UserModel) New(username, password, name, avatar string) (UserModel, erro
 	t.Password = password
 	t.Avatar = avatar
 	t.Name = name
+
+	t.Country = country
+	t.Tel = tel
+	t.Description = description
 
 	return t, err
 }
@@ -385,13 +405,13 @@ func (t UserModel) Update(username, password, name, avatar string) (int64, error
 // UpdatePwd update the password of the user model.
 func (t UserModel) UpdatePwd(password string) UserModel {
 
-	_, _ = t.Table(t.TableName).
-		Where("id", "=", t.Id).
-		Update(dialect.H{
-			"password": password,
-		})
+	// _, _ = t.Table(t.TableName).
+	// 	Where("id", "=", t.Id).
+	// 	Update(dialect.H{
+	// 		"password": password,
+	// 	})
 
-	t.Password = password
+	// t.Password = password
 	return t
 }
 

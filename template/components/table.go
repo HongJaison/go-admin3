@@ -1,11 +1,15 @@
 package components
 
 import (
-	"github.com/HongJaison/go-admin3/template/types"
 	"html/template"
+
+	"github.com/HongJaison/go-admin3/template/types"
 )
 
 type TableAttribute struct {
+	// added by jaison
+	TableID string
+
 	Name       string
 	Thead      types.Thead
 	InfoList   []map[string]types.InfoItem
@@ -25,6 +29,12 @@ type TableAttribute struct {
 	IsTab      bool
 	ExportUrl  string
 	types.Attribute
+}
+
+// added by jaison
+func (compo *TableAttribute) SetTableID(value string) types.TableAttribute {
+	compo.TableID = value
+	return compo
 }
 
 func (compo *TableAttribute) SetThead(value types.Thead) types.TableAttribute {
@@ -71,6 +81,7 @@ func (compo *TableAttribute) GetContent() template.HTML {
 
 type DataTableAttribute struct {
 	TableAttribute
+
 	EditUrl           string
 	NewUrl            string
 	UpdateUrl         string
@@ -93,6 +104,12 @@ type DataTableAttribute struct {
 	types.Attribute
 }
 
+// added by jaison
+func (compo *DataTableAttribute) SetTableID(value string) types.DataTableAttribute {
+	compo.TableAttribute.SetTableID(value)
+	return compo
+}
+
 func (compo *DataTableAttribute) GetDataTableHeader() template.HTML {
 	return ComposeHtml(compo.TemplateList, *compo, "table/box-header")
 }
@@ -112,8 +129,9 @@ func (compo *DataTableAttribute) SetIsTab(value bool) types.DataTableAttribute {
 	return compo
 }
 
-func (compo *DataTableAttribute) SetHideThead() types.DataTableAttribute {
-	compo.HideThead = true
+// modified by jaison
+func (compo *DataTableAttribute) SetHideThead(value bool) types.DataTableAttribute {
+	compo.HideThead = value
 	return compo
 }
 

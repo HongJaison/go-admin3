@@ -5,12 +5,13 @@
 package menu
 
 import (
-	"github.com/HongJaison/go-admin3/modules/db"
-	"github.com/HongJaison/go-admin3/modules/language"
-	"github.com/HongJaison/go-admin3/plugins/admin/models"
 	"html/template"
 	"regexp"
 	"strconv"
+
+	"github.com/HongJaison/go-admin3/modules/db"
+	"github.com/HongJaison/go-admin3/modules/language"
+	"github.com/HongJaison/go-admin3/plugins/admin/models"
 )
 
 // Item is an menu item.

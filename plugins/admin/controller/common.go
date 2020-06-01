@@ -2,6 +2,12 @@ package controller
 
 import (
 	"bytes"
+	template2 "html/template"
+	"net/http"
+	"regexp"
+	"strings"
+	"sync"
+
 	"github.com/HongJaison/go-admin3/context"
 	"github.com/HongJaison/go-admin3/modules/auth"
 	c "github.com/HongJaison/go-admin3/modules/config"
@@ -16,11 +22,6 @@ import (
 	"github.com/HongJaison/go-admin3/template"
 	"github.com/HongJaison/go-admin3/template/icon"
 	"github.com/HongJaison/go-admin3/template/types"
-	template2 "html/template"
-	"net/http"
-	"regexp"
-	"strings"
-	"sync"
 )
 
 type Handler struct {
@@ -255,11 +256,17 @@ func formFooter(page string, isHideEdit, isHideNew, isHideReset bool) template2.
 		editCheckBox = template.HTML(`
 			<label class="pull-right" style="margin: 5px 10px 0 0;">
                 <input type="checkbox" class="continue_edit" style="position: absolute; opacity: 0;"> ` + language.Get("continue editing") + `
-            </label>`)
+			</label>`)
+
+		// modified by jaison
+		// newCheckBox = template.HTML(`
+		// 	<label class="pull-right" style="margin: 5px 10px 0 0;">
+		// 		<input type="checkbox" class="continue_new" style="position: absolute; opacity: 0;"> ` + language.Get("continue creating") + `
+		// 	</label>`)
 		newCheckBox = template.HTML(`
 			<label class="pull-right" style="margin: 5px 10px 0 0;">
-                <input type="checkbox" class="continue_new" style="position: absolute; opacity: 0;"> ` + language.Get("continue creating") + `
-            </label>`)
+				<input type="checkbox" class="continue_new" style="position: absolute; opacity: 0;"> ` + language.Get("Create New account after this creation") + `
+			</label>`)
 
 		editWithNewCheckBoxJs = template.HTML(`$('.continue_edit').iCheck({checkboxClass: 'icheckbox_minimal-blue'}).on('ifChanged', function (event) {
 		if (this.checked) {

@@ -2,10 +2,11 @@ package components
 
 import (
 	"fmt"
+	"html/template"
+
 	"github.com/HongJaison/go-admin3/modules/language"
 	"github.com/HongJaison/go-admin3/template/icon"
 	"github.com/HongJaison/go-admin3/template/types"
-	"html/template"
 )
 
 type ButtonAttribute struct {
@@ -101,6 +102,11 @@ func (compo *ButtonAttribute) GetContent() template.HTML {
 
 	if compo.MarginRight != 0 {
 		compo.Style = template.HTMLAttr(fmt.Sprintf(`style="margin-right:%dpx;"`, compo.MarginRight))
+	}
+
+	// added by jaison
+	if compo.MarginLeft != 0 && compo.MarginRight != 0 {
+		compo.Style = template.HTMLAttr(fmt.Sprintf(`style="margin-left:%dpx;margin-right:%dpx;"`, compo.MarginLeft, compo.MarginRight))
 	}
 
 	if compo.LoadingText == "" {

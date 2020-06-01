@@ -3,9 +3,10 @@ package components
 import (
 	"bytes"
 	"fmt"
-	template2 "github.com/HongJaison/go-admin3/template"
 	"html/template"
 	"strings"
+
+	template2 "github.com/HongJaison/go-admin3/template"
 )
 
 func ComposeHtml(temList map[string]string, compo interface{}, templateName ...string) template.HTML {
@@ -23,9 +24,12 @@ func ComposeHtml(temList map[string]string, compo interface{}, templateName ...s
 	defineName := strings.Replace(templateName[0], "table/", "", -1)
 	defineName = strings.Replace(defineName, "form/", "", -1)
 
+	// fmt.Println(templateName)
+	// fmt.Println(defineName)
 	err = tmpl.ExecuteTemplate(buffer, defineName, compo)
 	if err != nil {
 		fmt.Println("ComposeHtml Error:", err)
+		// debug.PrintStack()
 	}
 	return template.HTML(buffer.String())
 }

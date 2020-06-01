@@ -46,6 +46,85 @@ func (admin *Admin) initRouter() *Admin {
 	authRoute.GET("/menu/edit/show", admin.handler.ShowEditMenu).Name("menu_edit_show")
 	authRoute.GET("/menu/new", admin.handler.ShowNewMenu).Name("menu_new_show")
 
+	// added by jaison for management
+	authRoute.GET("/management", admin.handler.ShowManagementTable).Name("management")
+
+	// added by jaison for search users
+	authRoute.POST("/searchplayers", admin.guardian.SetSearchPlayerParam, admin.handler.SearchPlayer).Name("searchplayers_response")
+	authRoute.GET("/searchplayers", admin.handler.ShowSearchPlayer).Name("searchplayers_request")
+	authRoute.GET("/searchplayers", admin.handler.ShowSearchPlayer).Name("/searchplayer/show_edit")
+	authRoute.GET("/searchplayers", admin.handler.ShowSearchPlayer).Name("/searchplayer/show_new")
+	authRoute.GET("/searchplayers", admin.handler.ShowSearchPlayer).Name("/searchplayer/delete")
+	authRoute.GET("/searchplayers", admin.handler.ShowSearchPlayer).Name("/searchplayer/export")
+	authRoute.GET("/searchplayers", admin.handler.ShowSearchPlayer).Name("/searchplayer/detail")
+
+	authRoute.GET("/ingameusers", admin.handler.InGameUsersTable).Name("ingameusers")
+	authRoute.POST("/winusers", admin.guardian.SetSearchWinPlayersParam, admin.handler.SearchWinPlayers).Name("winningusers_response")
+	authRoute.GET("/winusers", admin.handler.ShowSearchWinPlayers).Name("winningusers_request")
+	authRoute.GET("/winusers", admin.handler.ShowSearchWinPlayers).Name("/winplayers/show_edit")
+	authRoute.GET("/winusers", admin.handler.ShowSearchWinPlayers).Name("/winplayers/show_new")
+	authRoute.GET("/winusers", admin.handler.ShowSearchWinPlayers).Name("/winplayers/delete")
+	authRoute.GET("/winusers", admin.handler.ShowSearchWinPlayers).Name("/winplayers/export")
+	authRoute.GET("/winusers", admin.handler.ShowSearchWinPlayers).Name("/winplayers/detail")
+
+	// added by jaison for new agent and new player
+	authPrefixRoute.GET("/:__prefix/new", admin.guardian.ShowNewForm, admin.handler.ShowNewForm).Name("show_new")
+
+	// added by jaison for login log
+	authRoute.POST("/loginlog/searchloginlog", admin.guardian.SetLoginLogParam, admin.handler.LoginLog).Name("login_history_response")
+	authRoute.GET("/loginlog/searchloginlog", admin.handler.ShowLoginLog).Name("login_history_request")
+	authRoute.GET("/loginlog/searchloginlog", admin.handler.ShowLoginLog).Name("/loginlog/show_edit")
+	authRoute.GET("/loginlog/searchloginlog", admin.handler.ShowLoginLog).Name("/loginlog/show_new")
+	authRoute.GET("/loginlog/searchloginlog", admin.handler.ShowLoginLog).Name("/loginlog/delete")
+	authRoute.GET("/loginlog/searchloginlog", admin.handler.ShowLoginLog).Name("/loginlog/export")
+	authRoute.GET("/loginlog/searchloginlog", admin.handler.ShowLoginLog).Name("/loginlog/detail")
+
+	// added by jaison for logs
+	authRoute.POST("/bonuslog/searchbonuslog", admin.guardian.SetBonusLogParam, admin.handler.BonusLog).Name("bonus_logs_response")
+	authRoute.GET("/bonuslog/searchbonuslog", admin.handler.ShowBonusLog).Name("bonus_logs_request")
+	authRoute.GET("/bonuslog/searchbonuslog", admin.handler.ShowBonusLog).Name("/bonuslogs/show_edit")
+	authRoute.GET("/bonuslog/searchbonuslog", admin.handler.ShowBonusLog).Name("/bonuslogs/show_new")
+	authRoute.GET("/bonuslog/searchbonuslog", admin.handler.ShowBonusLog).Name("/bonuslogs/delete")
+	authRoute.GET("/bonuslog/searchbonuslog", admin.handler.ShowBonusLog).Name("/bonuslogs/export")
+	authRoute.GET("/bonuslog/searchbonuslog", admin.handler.ShowBonusLog).Name("/bonuslogs/detail")
+
+	// added by jaison for logs
+	authRoute.POST("/scorelog/searchscorelog", admin.guardian.SetScoreLogParam, admin.handler.ScoreLog).Name("score_logs_response")
+	authRoute.GET("/scorelog/searchscorelog", admin.handler.ShowScoreLog).Name("score_logs_request")
+	authRoute.GET("/scorelog/searchscorelog", admin.handler.ShowScoreLog).Name("/scorelogs/show_edit")
+	authRoute.GET("/scorelog/searchscorelog", admin.handler.ShowScoreLog).Name("/scorelogs/show_new")
+	authRoute.GET("/scorelog/searchscorelog", admin.handler.ShowScoreLog).Name("/scorelogs/delete")
+	authRoute.GET("/scorelog/searchscorelog", admin.handler.ShowScoreLog).Name("/scorelogs/export")
+	authRoute.GET("/scorelog/searchscorelog", admin.handler.ShowScoreLog).Name("/scorelogs/detail")
+
+	// added by jaison for logs
+	authRoute.POST("/report/dailyplayerreport", admin.guardian.SetReportLogParam, admin.handler.PlayerReportLog).Name("player_report_response")
+	authRoute.GET("/report/dailyplayerreport", admin.handler.ShowPlayerReportLog).Name("player_report_request")
+	authRoute.GET("/report/dailyplayerreport", admin.handler.ShowPlayerReportLog).Name("/dailyplayerreport/show_edit")
+	authRoute.GET("/report/dailyplayerreport", admin.handler.ShowPlayerReportLog).Name("/dailyplayerreport/show_new")
+	authRoute.GET("/report/dailyplayerreport", admin.handler.ShowPlayerReportLog).Name("/dailyplayerreport/delete")
+	authRoute.GET("/report/dailyplayerreport", admin.handler.ShowPlayerReportLog).Name("/dailyplayerreport/export")
+	authRoute.GET("/report/dailyplayerreport", admin.handler.ShowPlayerReportLog).Name("/dailyplayerreport/detail")
+
+	// added by jaison for daily agent report logs
+	authRoute.POST("/report/dailyagentreport", admin.guardian.SetReportLogParam, admin.handler.AgentReportLog).Name("agent_report_response")
+	authRoute.GET("/report/dailyagentreport", admin.handler.ShowAgentReportLog).Name("agent_report_request")
+	authRoute.GET("/report/dailyagentreport", admin.handler.ShowAgentReportLog).Name("/dailyagentreport/show_edit")
+	authRoute.GET("/report/dailyagentreport", admin.handler.ShowAgentReportLog).Name("/dailyagentreport/show_new")
+	authRoute.GET("/report/dailyagentreport", admin.handler.ShowAgentReportLog).Name("/dailyagentreport/delete")
+	authRoute.GET("/report/dailyagentreport", admin.handler.ShowAgentReportLog).Name("/dailyagentreport/export")
+	authRoute.GET("/report/dailyagentreport", admin.handler.ShowAgentReportLog).Name("/dailyagentreport/detail")
+
+	// added by jaison for game configs
+	authRoute.POST("/gameconfig", admin.guardian.SetConfigUpdateParam, admin.handler.RefreshGameConfigs).Name("agent_report_response")
+	authRoute.GET("/gameconfig", admin.handler.ShowGameConfigs).Name("agent_report_request")
+
+	authRoute.GET("/gameconfig", admin.handler.ShowGameConfigs).Name("/gameconfig/show_edit")
+	authRoute.GET("/gameconfig", admin.handler.ShowGameConfigs).Name("/gameconfig/show_new")
+	authRoute.GET("/gameconfig", admin.handler.ShowGameConfigs).Name("/gameconfig/delete")
+	authRoute.GET("/gameconfig", admin.handler.ShowGameConfigs).Name("/gameconfig/export")
+	authRoute.GET("/gameconfig", admin.handler.ShowGameConfigs).Name("/gameconfig/detail")
+
 	// add delete modify query
 	authPrefixRoute.GET("/info/:__prefix/detail", admin.handler.ShowDetail).Name("detail")
 	authPrefixRoute.GET("/info/:__prefix/edit", admin.guardian.ShowForm, admin.handler.ShowForm).Name("show_edit")
