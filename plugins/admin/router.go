@@ -48,6 +48,17 @@ func (admin *Admin) initRouter() *Admin {
 
 	// added by jaison for management
 	authRoute.GET("/management", admin.handler.ShowManagementTable).Name("management")
+	// added by jaison for add shareholder
+	authRoute.POST("/management/addshareholder", admin.guardian.SetAddShareholderParam, admin.handler.AddShareHolder).Name("addshareholder_response")
+	authRoute.GET("/management/addshareholder", admin.handler.ShowAddShareHolder).Name("addshareholder_request")
+	// added by jaison for shareholders
+	authRoute.POST("/management/shareholders", admin.guardian.SetSearchShareholderParam, admin.handler.Shareholders).Name("shareholder_response")
+	authRoute.GET("/management/shareholders", admin.handler.ShowShareholders).Name("shareholder_request")
+	// added by jaison for add subaccount
+	authRoute.POST("/management/addsubaccount", admin.guardian.SetAddSubAccountParam, admin.handler.AddSubAccount).Name("addsubaccount_response")
+	authRoute.GET("/management/addsubaccount", admin.handler.ShowAddSubAccount).Name("addsubaccount_request")
+	// added by jaison for subaccounts
+	authRoute.GET("/management/subaccounts", admin.handler.ShowSubAccounts).Name("subaccounts_request")
 
 	// added by jaison for search users
 	authRoute.POST("/searchplayers", admin.guardian.SetSearchPlayerParam, admin.handler.SearchPlayer).Name("searchplayers_response")
@@ -70,14 +81,38 @@ func (admin *Admin) initRouter() *Admin {
 	// added by jaison for new agent and new player
 	authPrefixRoute.GET("/:__prefix/new", admin.guardian.ShowNewForm, admin.handler.ShowNewForm).Name("show_new")
 
-	// added by jaison for login log
-	authRoute.POST("/loginlog/searchloginlog", admin.guardian.SetLoginLogParam, admin.handler.LoginLog).Name("login_history_response")
-	authRoute.GET("/loginlog/searchloginlog", admin.handler.ShowLoginLog).Name("login_history_request")
-	authRoute.GET("/loginlog/searchloginlog", admin.handler.ShowLoginLog).Name("/loginlog/show_edit")
-	authRoute.GET("/loginlog/searchloginlog", admin.handler.ShowLoginLog).Name("/loginlog/show_new")
-	authRoute.GET("/loginlog/searchloginlog", admin.handler.ShowLoginLog).Name("/loginlog/delete")
-	authRoute.GET("/loginlog/searchloginlog", admin.handler.ShowLoginLog).Name("/loginlog/export")
-	authRoute.GET("/loginlog/searchloginlog", admin.handler.ShowLoginLog).Name("/loginlog/detail")
+	// added by jaison for member outstanding
+	authRoute.POST("/memberoutstanding", admin.guardian.SetOutstandingParam, admin.handler.MemberOutstanding).Name("member_outstanding_response")
+	authRoute.GET("/memberoutstanding", admin.handler.ShowMemberOutstanding).Name("member_outstanding_request")
+	authRoute.GET("/memberoutstanding", admin.handler.ShowMemberOutstanding).Name("/memberoutstanding/show_edit")
+	authRoute.GET("/memberoutstanding", admin.handler.ShowMemberOutstanding).Name("/memberoutstanding/show_new")
+	authRoute.GET("/memberoutstanding", admin.handler.ShowMemberOutstanding).Name("/memberoutstanding/delete")
+	authRoute.GET("/memberoutstanding", admin.handler.ShowMemberOutstanding).Name("/memberoutstanding/export")
+	authRoute.GET("/memberoutstanding", admin.handler.ShowMemberOutstanding).Name("/memberoutstanding/detail")
+	// added by jaison for W/L Member
+	authRoute.POST("/gamelogs/searchgamelog", admin.guardian.SetGameLogsParam, admin.handler.GameLogs).Name("game_logs_response")
+	authRoute.GET("/gamelogs/searchgamelog", admin.handler.ShowGameLogs).Name("game_logs_request")
+	authRoute.GET("/gamelogs/searchgamelog", admin.handler.ShowGameLogs).Name("/gamelogs/show_edit")
+	authRoute.GET("/gamelogs/searchgamelog", admin.handler.ShowGameLogs).Name("/gamelogs/show_new")
+	authRoute.GET("/gamelogs/searchgamelog", admin.handler.ShowGameLogs).Name("/gamelogs/delete")
+	authRoute.GET("/gamelogs/searchgamelog", admin.handler.ShowGameLogs).Name("/gamelogs/export")
+	authRoute.GET("/gamelogs/searchgamelog", admin.handler.ShowGameLogs).Name("/gamelogs/detail")
+	// added by jaison for agent scores
+	authRoute.POST("/scorelog/agentscores", admin.guardian.SetScoreLogParam, admin.handler.AgentScores).Name("agent_scores_response")
+	authRoute.GET("/scorelog/agentscores", admin.handler.ShowAgentScores).Name("agent_scores_request")
+	authRoute.GET("/scorelog/agentscores", admin.handler.ShowAgentScores).Name("/agentscores/show_edit")
+	authRoute.GET("/scorelog/agentscores", admin.handler.ShowAgentScores).Name("/agentscores/show_new")
+	authRoute.GET("/scorelog/agentscores", admin.handler.ShowAgentScores).Name("/agentscores/delete")
+	authRoute.GET("/scorelog/agentscores", admin.handler.ShowAgentScores).Name("/agentscores/export")
+	authRoute.GET("/scorelog/agentscores", admin.handler.ShowAgentScores).Name("/agentscores/detail")
+	// added by jaison for score logs
+	authRoute.POST("/scorelog/searchscorelog", admin.guardian.SetScoreLogParam, admin.handler.ScoreLog).Name("score_logs_response")
+	authRoute.GET("/scorelog/searchscorelog", admin.handler.ShowScoreLog).Name("score_logs_request")
+	authRoute.GET("/scorelog/searchscorelog", admin.handler.ShowScoreLog).Name("/scorelogs/show_edit")
+	authRoute.GET("/scorelog/searchscorelog", admin.handler.ShowScoreLog).Name("/scorelogs/show_new")
+	authRoute.GET("/scorelog/searchscorelog", admin.handler.ShowScoreLog).Name("/scorelogs/delete")
+	authRoute.GET("/scorelog/searchscorelog", admin.handler.ShowScoreLog).Name("/scorelogs/export")
+	authRoute.GET("/scorelog/searchscorelog", admin.handler.ShowScoreLog).Name("/scorelogs/detail")
 
 	// added by jaison for logs
 	authRoute.POST("/bonuslog/searchbonuslog", admin.guardian.SetBonusLogParam, admin.handler.BonusLog).Name("bonus_logs_response")
@@ -88,16 +123,16 @@ func (admin *Admin) initRouter() *Admin {
 	authRoute.GET("/bonuslog/searchbonuslog", admin.handler.ShowBonusLog).Name("/bonuslogs/export")
 	authRoute.GET("/bonuslog/searchbonuslog", admin.handler.ShowBonusLog).Name("/bonuslogs/detail")
 
-	// added by jaison for logs
-	authRoute.POST("/scorelog/searchscorelog", admin.guardian.SetScoreLogParam, admin.handler.ScoreLog).Name("score_logs_response")
-	authRoute.GET("/scorelog/searchscorelog", admin.handler.ShowScoreLog).Name("score_logs_request")
-	authRoute.GET("/scorelog/searchscorelog", admin.handler.ShowScoreLog).Name("/scorelogs/show_edit")
-	authRoute.GET("/scorelog/searchscorelog", admin.handler.ShowScoreLog).Name("/scorelogs/show_new")
-	authRoute.GET("/scorelog/searchscorelog", admin.handler.ShowScoreLog).Name("/scorelogs/delete")
-	authRoute.GET("/scorelog/searchscorelog", admin.handler.ShowScoreLog).Name("/scorelogs/export")
-	authRoute.GET("/scorelog/searchscorelog", admin.handler.ShowScoreLog).Name("/scorelogs/detail")
+	// added by jaison for login log
+	authRoute.POST("/loginlog/searchloginlog", admin.guardian.SetLoginLogParam, admin.handler.LoginLog).Name("login_history_response")
+	authRoute.GET("/loginlog/searchloginlog", admin.handler.ShowLoginLog).Name("login_history_request")
+	authRoute.GET("/loginlog/searchloginlog", admin.handler.ShowLoginLog).Name("/loginlog/show_edit")
+	authRoute.GET("/loginlog/searchloginlog", admin.handler.ShowLoginLog).Name("/loginlog/show_new")
+	authRoute.GET("/loginlog/searchloginlog", admin.handler.ShowLoginLog).Name("/loginlog/delete")
+	authRoute.GET("/loginlog/searchloginlog", admin.handler.ShowLoginLog).Name("/loginlog/export")
+	authRoute.GET("/loginlog/searchloginlog", admin.handler.ShowLoginLog).Name("/loginlog/detail")
 
-	// added by jaison for logs
+	// added by jaison for daily player report logs
 	authRoute.POST("/report/dailyplayerreport", admin.guardian.SetReportLogParam, admin.handler.PlayerReportLog).Name("player_report_response")
 	authRoute.GET("/report/dailyplayerreport", admin.handler.ShowPlayerReportLog).Name("player_report_request")
 	authRoute.GET("/report/dailyplayerreport", admin.handler.ShowPlayerReportLog).Name("/dailyplayerreport/show_edit")
@@ -115,6 +150,15 @@ func (admin *Admin) initRouter() *Admin {
 	authRoute.GET("/report/dailyagentreport", admin.handler.ShowAgentReportLog).Name("/dailyagentreport/export")
 	authRoute.GET("/report/dailyagentreport", admin.handler.ShowAgentReportLog).Name("/dailyagentreport/detail")
 
+	// added by jaison for redpacket logs
+	authRoute.POST("/redpacketlog/searchredpacketlog", admin.guardian.SetRedPacketLogParam, admin.handler.RedPacketLog).Name("redpacket_logs_response")
+	authRoute.GET("/redpacketlog/searchredpacketlog", admin.handler.ShowRedPacketLog).Name("redpacket_logs_request")
+	authRoute.GET("/redpacketlog/searchredpacketlog", admin.handler.ShowRedPacketLog).Name("/redpacketlogs/show_edit")
+	authRoute.GET("/redpacketlog/searchredpacketlog", admin.handler.ShowRedPacketLog).Name("/redpacketlogs/show_new")
+	authRoute.GET("/redpacketlog/searchredpacketlog", admin.handler.ShowRedPacketLog).Name("/redpacketlogs/delete")
+	authRoute.GET("/redpacketlog/searchredpacketlog", admin.handler.ShowRedPacketLog).Name("/redpacketlogs/export")
+	authRoute.GET("/redpacketlog/searchredpacketlog", admin.handler.ShowRedPacketLog).Name("/redpacketlogs/detail")
+
 	// added by jaison for game configs
 	authRoute.POST("/gameconfig", admin.guardian.SetConfigUpdateParam, admin.handler.RefreshGameConfigs).Name("agent_report_response")
 	authRoute.GET("/gameconfig", admin.handler.ShowGameConfigs).Name("agent_report_request")
@@ -124,6 +168,19 @@ func (admin *Admin) initRouter() *Admin {
 	authRoute.GET("/gameconfig", admin.handler.ShowGameConfigs).Name("/gameconfig/delete")
 	authRoute.GET("/gameconfig", admin.handler.ShowGameConfigs).Name("/gameconfig/export")
 	authRoute.GET("/gameconfig", admin.handler.ShowGameConfigs).Name("/gameconfig/detail")
+
+	// added by jaison for profile settings
+	authRoute.POST("/profile/edit", admin.guardian.SetEditProfileParam, admin.handler.EditProfile).Name("profile_edit_response")
+	authRoute.GET("/profile/edit", admin.handler.ShowEditProfile).Name("profile_edit_request")
+
+	// authPrefixRoute.GET("/info/:__prefix/edit", admin.guardian.ShowForm, admin.handler.ShowForm).Name("show_edit")
+	// authPrefixRoute.POST("/edit/:__prefix", admin.guardian.EditForm, admin.handler.EditForm).Name("edit")
+
+	// authRoute.GET("/profile/edit", admin.handler.ShowGameConfigs).Name("/gameconfig/show_edit")
+	// authRoute.GET("/profile/edit", admin.handler.ShowGameConfigs).Name("/gameconfig/show_new")
+	// authRoute.GET("/profile/edit", admin.handler.ShowGameConfigs).Name("/gameconfig/delete")
+	// authRoute.GET("/profile/edit", admin.handler.ShowGameConfigs).Name("/gameconfig/export")
+	// authRoute.GET("/profile/edit", admin.handler.ShowGameConfigs).Name("/gameconfig/detail")
 
 	// add delete modify query
 	authPrefixRoute.GET("/info/:__prefix/detail", admin.handler.ShowDetail).Name("detail")

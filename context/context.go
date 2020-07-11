@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/HongJaison/go-admin3/modules/constant"
 	"io"
 	"io/ioutil"
 	"math"
@@ -20,6 +19,8 @@ import (
 	"path"
 	"strings"
 	"time"
+
+	"github.com/HongJaison/go-admin3/modules/constant"
 )
 
 const abortIndex int8 = math.MaxInt8 / 2
@@ -78,6 +79,9 @@ type Node struct {
 
 // SetUserValue set the value of user context.
 func (ctx *Context) SetUserValue(key string, value interface{}) {
+	// fmt.Println(`contex/contex.go/SetUserValue`)
+	// debug.PrintStack()
+
 	ctx.UserValue[key] = value
 }
 

@@ -1,11 +1,13 @@
 package guard
 
 import (
-	"github.com/HongJaison/go-admin3/template/types"
+	"fmt"
 	tmpl "html/template"
 	"mime/multipart"
 	"regexp"
 	"strings"
+
+	"github.com/HongJaison/go-admin3/template/types"
 
 	"github.com/HongJaison/go-admin3/context"
 	"github.com/HongJaison/go-admin3/modules/auth"
@@ -28,34 +30,42 @@ type ShowFormParam struct {
 }
 
 func (g *Guard) ShowForm(ctx *context.Context) {
+	fmt.Println(`plugins/admin/modules/guard/edit.go/ShowForm`)
 
 	panel, prefix := g.table(ctx)
 
 	if !panel.GetEditable() {
+		fmt.Println(`not editable`)
 		alert(ctx, panel, errors.OperationNotAllow, g.conn, g.navBtns)
 		ctx.Abort()
 		return
 	}
 
 	if panel.GetOnlyInfo() {
+		fmt.Println(`Only Info`)
 		ctx.Redirect(config.Url("/info/" + prefix))
 		ctx.Abort()
 		return
 	}
 
 	if panel.GetOnlyDetail() {
+		fmt.Println(`Only Detail`)
 		ctx.Redirect(config.Url("/info/" + prefix + "/detail"))
 		ctx.Abort()
 		return
 	}
 
 	if panel.GetOnlyNewForm() {
+		fmt.Println(`Only New Form`)
 		ctx.Redirect(config.Url("/info/" + prefix + "/new"))
 		ctx.Abort()
 		return
 	}
 
 	id := ctx.Query(constant.EditPKKey)
+
+	fmt.Println(`ID: ` + id)
+
 	if id == "" && prefix != "site" {
 		alert(ctx, panel, errors.WrongPK(panel.GetPrimaryKey().Name), g.conn, g.navBtns)
 		ctx.Abort()
@@ -65,13 +75,16 @@ func (g *Guard) ShowForm(ctx *context.Context) {
 		id = "1"
 	}
 
-	ctx.SetUserValue(showFormParamKey, &ShowFormParam{
+	showFormParam := &ShowFormParam{
 		Panel:  panel,
 		Id:     id,
 		Prefix: prefix,
 		Param: parameter.GetParam(ctx.Request.URL, panel.GetInfo().DefaultPageSize, panel.GetInfo().SortField,
 			panel.GetInfo().GetSort()).WithPKs(id),
-	})
+	}
+
+	fmt.Println(showFormParam)
+	ctx.SetUserValue(showFormParamKey, showFormParam)
 	ctx.Next()
 }
 

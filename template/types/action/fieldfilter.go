@@ -1,9 +1,10 @@
 package action
 
 import (
+	"html/template"
+
 	"github.com/HongJaison/go-admin3/plugins/admin/modules/form"
 	"github.com/HongJaison/go-admin3/template/types"
-	"html/template"
 )
 
 type FieldFilterAction struct {
@@ -16,7 +17,6 @@ func FieldFilter(field string) *FieldFilterAction {
 }
 
 func (jump *FieldFilterAction) ExtContent() template.HTML {
-
 	options := jump.BtnData.(types.FieldOptions)
 
 	cm := ``

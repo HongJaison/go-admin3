@@ -417,3 +417,8 @@ func getDefault(values url.Values, key, def string) string {
 	}
 	return value
 }
+
+func (param Parameters) WithParameter(key string, value string) Parameters {
+	param.Fields[key] = []string{value}
+	return param
+}

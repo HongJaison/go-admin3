@@ -131,6 +131,237 @@ func GetSearchPlayerParam(ctx *context.Context) *LoginLogParam {
 }
 
 // added by jaison
+type AddShareholderParam struct {
+	// basic info
+	Username string
+	Nickname string
+	Password string
+	Phonenum string
+
+	// credit settings
+	Currency string
+	Credit   string
+	SHType   string
+	OurPT    string
+	GivenPT  string
+
+	// commission
+	CommOrgBac string
+	CommSupBac string
+	CommBac4   string
+	CommCowCow string
+	CommDragon string
+	CommRoulet string
+	CommSicbo  string
+
+	Alert template.HTML
+}
+
+// added by jaison
+func (g *Guard) SetAddShareholderParam(ctx *context.Context) {
+	fmt.Println(`plugins.admin.modules.guard.menu_new.go/SetAddShareholderParam`)
+
+	var (
+		alert template.HTML
+	)
+
+	alert = template.HTML(``)
+
+	fmt.Println(ctx)
+
+	// basic info
+	Username := ctx.FormValue("username")
+	Nickname := ctx.FormValue("nickname")
+	Password := ctx.FormValue("password")
+	Phonenum := ctx.FormValue("phonenum")
+
+	// credit settings
+	Currency := ctx.FormValue("currency")
+	Credit := ctx.FormValue("credit")
+	SHType := ctx.FormValue("shtype")
+	OurPT := ctx.FormValue("ourpt")
+	GivenPT := ctx.FormValue("givenpt")
+
+	// commission
+	CommOrgBac := ctx.FormValue("commorgbac")
+	CommSupBac := ctx.FormValue("commsupbac")
+	CommBac4 := ctx.FormValue("commbac4")
+	CommCowCow := ctx.FormValue("commcowcow")
+	CommDragon := ctx.FormValue("commdragon")
+	CommRoulet := ctx.FormValue("commroulet")
+	CommSicbo := ctx.FormValue("commsicbo")
+
+	ctx.SetUserValue("AddShareholderParam", &AddShareholderParam{
+		// basic info
+		Username: Username,
+		Nickname: Nickname,
+		Password: Password,
+		Phonenum: Phonenum,
+
+		// credit settings
+		Currency: Currency,
+		Credit:   Credit,
+		SHType:   SHType,
+		OurPT:    OurPT,
+		GivenPT:  GivenPT,
+
+		// commission
+		CommOrgBac: CommOrgBac,
+		CommSupBac: CommSupBac,
+		CommBac4:   CommBac4,
+		CommCowCow: CommCowCow,
+		CommDragon: CommDragon,
+		CommRoulet: CommRoulet,
+		CommSicbo:  CommSicbo,
+
+		Alert: alert,
+	})
+	ctx.Next()
+}
+
+// added by jaison
+func GetAddShareholderParam(ctx *context.Context) *AddShareholderParam {
+	return ctx.UserValue["AddShareholderParam"].(*AddShareholderParam)
+}
+
+// added by jaison
+func (e AddShareholderParam) HasAlert() bool {
+	return e.Alert != template.HTML("")
+}
+
+// added by jaison
+type AddSubAccountParam struct {
+	// basic info
+	Username string
+	Nickname string
+	Password string
+	Phonenum string
+
+	// permission
+	Account          string
+	MemberManagement string
+	StockManagement  string
+	Report           string
+	Payment          string
+
+	Alert template.HTML
+}
+
+// added by jaison
+func (g *Guard) SetAddSubAccountParam(ctx *context.Context) {
+	fmt.Println(`plugins.admin.modules.guard.menu_new.go/SetAddSubAccountParam`)
+
+	var (
+		alert template.HTML
+	)
+
+	alert = template.HTML(``)
+
+	// basic info
+	Username := ctx.FormValue("username")
+	Nickname := ctx.FormValue("nickname")
+	Password := ctx.FormValue("password")
+	Phonenum := ctx.FormValue("phonenum")
+
+	// permission
+	Account := ctx.FormValue("permaccount")
+	MemberManagement := ctx.FormValue("permmem")
+	StockManagement := ctx.FormValue("permstock")
+	Report := ctx.FormValue("permreport")
+	Payment := ctx.FormValue("permpayment")
+
+	ctx.SetUserValue("AddSubAccountParam", &AddSubAccountParam{
+		// basic info
+		Username: Username,
+		Nickname: Nickname,
+		Password: Password,
+		Phonenum: Phonenum,
+
+		// permission
+		Account:          Account,
+		MemberManagement: MemberManagement,
+		StockManagement:  StockManagement,
+		Report:           Report,
+		Payment:          Payment,
+
+		Alert: alert,
+	})
+	ctx.Next()
+}
+
+// added by jaison
+func GetAddSubAccountParam(ctx *context.Context) *AddSubAccountParam {
+	return ctx.UserValue["AddSubAccountParam"].(*AddSubAccountParam)
+}
+
+// added by jaison
+func (e AddSubAccountParam) HasAlert() bool {
+	return e.Alert != template.HTML("")
+}
+
+// added by jaison
+type SearchShareholderParam struct {
+	Username string
+	Level    string
+
+	Alert template.HTML
+}
+
+// added by jaison
+func (g *Guard) SetSearchShareholderParam(ctx *context.Context) {
+	fmt.Println(`plugins.admin.modules.guard.menu_new.go/SetSearchShareholderParam`)
+
+	var (
+		alert template.HTML
+	)
+
+	alert = template.HTML(``)
+
+	// basic info
+	Username := ctx.FormValue("username")
+	Level := ctx.FormValue("level")
+
+	ctx.SetUserValue("SearchShareholderParam", &SearchShareholderParam{
+		Username: Username,
+		Level:    Level,
+		Alert:    alert,
+	})
+
+	ctx.Next()
+}
+
+// added by jaison
+func SetSearchShareholderManualParam(ctx *context.Context, Username string, Level string) {
+	fmt.Println(`plugins.admin.modules.guard.menu_new.go/SetSearchShareholderManualParam`)
+
+	var (
+		alert template.HTML
+	)
+
+	alert = template.HTML(``)
+
+	ctx.SetUserValue("SearchShareholderParam", &SearchShareholderParam{
+		Username: Username,
+		Level:    Level,
+		Alert:    alert,
+	})
+}
+
+// added by jaison
+func GetSearchShareholderParam(ctx *context.Context) *SearchShareholderParam {
+	if ctx.UserValue["SearchShareholderParam"] == nil {
+		return nil
+	}
+
+	return ctx.UserValue["SearchShareholderParam"].(*SearchShareholderParam)
+}
+
+// added by jaison
+func (e SearchShareholderParam) HasAlert() bool {
+	return e.Alert != template.HTML("")
+}
+
+// added by jaison
 type SearchWinPlayersParam struct {
 	DiffTime string
 	Alert    template.HTML
@@ -161,11 +392,63 @@ func GetSearchWinPlayersParam(ctx *context.Context) *SearchWinPlayersParam {
 }
 
 // added by jaison
+func (g *Guard) SetOutstandingParam(ctx *context.Context) {
+	fmt.Println(`plugins.admin.modules.guard.menu_new.go/SetOutstandingParam`)
+
+	username := ctx.FormValue("username")
+
+	var (
+		alert template.HTML
+	)
+
+	alert = template.HTML(``)
+
+	ctx.SetUserValue("MemberOutstandingParamm", &LoginLogParam{
+		Username: username,
+		Alert:    alert,
+	})
+	ctx.Next()
+}
+
+// added by jaison
+func GetOutstandingParam(ctx *context.Context) *LoginLogParam {
+	return ctx.UserValue["MemberOutstandingParamm"].(*LoginLogParam)
+}
+
+// added by jaison
+func (g *Guard) SetGameLogsParam(ctx *context.Context) {
+	fmt.Println(`plugins.admin.modules.guard.menu_new.go/SetGameLogsParam`)
+
+	username := ctx.FormValue("username")
+	startdate := ctx.FormValue("startdate")
+	enddate := ctx.FormValue("enddate")
+
+	var (
+		alert template.HTML
+	)
+
+	alert = template.HTML(``)
+
+	ctx.SetUserValue("GameLogsParam", &ScoreLogParam{
+		StartDate: startdate,
+		EndDate:   enddate,
+		Username:  username,
+		Alert:     alert,
+	})
+	ctx.Next()
+}
+
+// added by jaison
+func GetGameLogsParam(ctx *context.Context) *ScoreLogParam {
+	return ctx.UserValue["GameLogsParam"].(*ScoreLogParam)
+}
+
+// added by jaison
 type ScoreLogParam struct {
-	StartDateTime string
-	EndDateTime   string
-	Username      string
-	Alert         template.HTML
+	StartDate string
+	EndDate   string
+	Username  string
+	Alert     template.HTML
 }
 
 // added by jaison
@@ -173,8 +456,8 @@ func (g *Guard) SetScoreLogParam(ctx *context.Context) {
 	fmt.Println(`plugins.admin.modules.guard.menu_new.go/SetScoreLogParam`)
 
 	username := ctx.FormValue("username")
-	startdatetime := ctx.FormValue("startdate")
-	enddatetime := ctx.FormValue("enddate")
+	startdate := ctx.FormValue("startdate")
+	enddate := ctx.FormValue("enddate")
 
 	var (
 		alert template.HTML
@@ -183,10 +466,10 @@ func (g *Guard) SetScoreLogParam(ctx *context.Context) {
 	alert = template.HTML(``)
 
 	ctx.SetUserValue("ScoreLogParam", &ScoreLogParam{
-		StartDateTime: startdatetime,
-		EndDateTime:   enddatetime,
-		Username:      username,
-		Alert:         alert,
+		StartDate: startdate,
+		EndDate:   enddate,
+		Username:  username,
+		Alert:     alert,
 	})
 	ctx.Next()
 }
@@ -435,4 +718,75 @@ func GetConfigUpdateParam(ctx *context.Context) *UpdateConfigRequestModel {
 // added by jaison
 func (e UpdateConfigRequestModel) HasAlert() bool {
 	return e.Alert != template.HTML("")
+}
+
+// added by jaison
+type UpdateProfileRequestModel struct {
+	PasswordOld string
+	PasswordNew string
+	PasswordCon string
+	Alert       template.HTML
+}
+
+// added by jaison
+func (g *Guard) SetEditProfileParam(ctx *context.Context) {
+	fmt.Println(`plugins.admin.modules.guard.menu_new.go/SetEditProfileParam`)
+
+	var (
+		alert template.HTML
+	)
+
+	alert = template.HTML(``)
+
+	var requestModel UpdateProfileRequestModel
+
+	requestModel = UpdateProfileRequestModel{
+		PasswordOld: ctx.FormValue("oldPassWd"),
+		PasswordNew: ctx.FormValue("newPassWd"),
+		PasswordCon: ctx.FormValue("rePassWd"),
+		Alert:       alert,
+	}
+
+	ctx.SetUserValue("UpdateProfileParam", &requestModel)
+	ctx.Next()
+}
+
+// added by jaison
+func GetEditProfileParam(ctx *context.Context) *UpdateProfileRequestModel {
+	if ctx.UserValue["UpdateProfileParam"] == nil {
+		return nil
+	}
+
+	return ctx.UserValue["UpdateProfileParam"].(*UpdateProfileRequestModel)
+}
+
+// added by jaison
+func (e UpdateProfileRequestModel) HasAlert() bool {
+	return e.Alert != template.HTML("")
+}
+
+// added by jaison
+func (g *Guard) SetRedPacketLogParam(ctx *context.Context) {
+	fmt.Println(`plugins.admin.modules.guard.menu_new.go/SetRedPacketLogParam`)
+
+	var (
+		alert template.HTML
+	)
+
+	alert = template.HTML(``)
+
+	username := ctx.FormValue("username")
+	startdate := ctx.FormValue("startdate")
+
+	ctx.SetUserValue("RedPacketLogParam", &BonusLogParam{
+		StartDate: startdate,
+		Username:  username,
+		Alert:     alert,
+	})
+	ctx.Next()
+}
+
+// added by jaison
+func GetRedPacketLogParam(ctx *context.Context) *BonusLogParam {
+	return ctx.UserValue["RedPacketLogParam"].(*BonusLogParam)
 }

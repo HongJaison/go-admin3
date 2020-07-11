@@ -31,6 +31,8 @@ type UserModel struct {
 	Level         string            `json:"level"`
 	LevelName     string            `json:"level_name"`
 
+	Score float64 `json:"score"`
+
 	Country     string `json:"country"`
 	Tel         string `json:"tel"`
 	Description string `json:"description"`

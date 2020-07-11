@@ -433,6 +433,8 @@ func (s *SystemTable) GetAgentsTable(ctx *context.Context) (agentTable Table) {
 	formList.AddField(lg("Tel"), "tel", db.Varchar, form.Text)
 	formList.AddField(lg("Description"), "description", db.Varchar, form.Text)
 
+	formList.AddField(lg(`DateRange`), `DateRange`, db.Varchar, form.DateRange)
+
 	formList.SetTable("Agents").
 		SetTitle(lg("Add new agent")).
 		// SetPostValidator(func(values form2.Values) error {
@@ -484,6 +486,268 @@ func (s *SystemTable) GetAgentsTable(ctx *context.Context) (agentTable Table) {
 			return txErr
 		})
 
+	return
+}
+
+// added by jaison
+func (s *SystemTable) GetShareholdersTable(ctx *context.Context) (agentTable Table) {
+	fmt.Println("plugins.modules.table.generator.go GetShareholdersTable")
+
+	agentTableConfig := DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver)
+
+	agentTable = NewDefaultTable(agentTableConfig)
+
+	info := agentTable.GetInfo().AddXssJsFilter().HideFilterArea()
+
+	info.SetSortAsc()
+
+	info.AddField("#", "id", db.Int)
+	info.AddField(lg("Level"), "level", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			return template.HTML(`Shareholder`)
+		})
+	info.AddField(lg("Login name"), "username", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			// "/Manage/Management?parentId=" + model.Value
+			return template.HTML("<a>" + model.Value + "</a>")
+		})
+	info.AddField(lg("Nickname"), "name", db.Varchar)
+	info.AddField(lg("Phone"), "tel", db.Nvarchar)
+	info.AddField(lg("Suspend"), "state", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(``)
+
+			if model.Row[`state`].(int64) == 1 {
+				tag += template.HTML(`NO`)
+			} else if model.Row[`state`].(int64) == 0 {
+				tag += template.HTML(`YES`)
+			} else if model.Row[`state`].(int64) == -1 {
+				tag += template.HTML(`YES`)
+			}
+
+			return tag
+		})
+	info.AddField(lg("Lock"), "lock", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(``)
+
+			if model.Row[`state`].(int64) == -1 {
+				tag += template.HTML(`Lock`)
+			} else {
+				tag += template.HTML(`Unlock`)
+			}
+
+			return tag
+		})
+	info.AddField(lg("Credit"), "score", db.Decimal)
+	info.AddField(lg("PT"), "pt", db.Varchar)
+	info.AddField(lg("Currency"), "currency", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			// button := template.HTML(`<td id="op2_0" class="text-center">`)
+			button := template.HTML(`<button type="button" name="shareholders" title="` + model.Row[`username`].(string) + `" rel="disable" player="` + model.ID + `" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="">View</button>`)
+			// button += template.HTML(`</td>`)
+			return button
+		})
+	info.AddField(lg("Commission"), "commission", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			// button := template.HTML(`<td id="op2_0" class="text-center">`)
+			button := template.HTML(`<button type="button" name="shareholders" title="` + model.Row[`username`].(string) + `" rel="disable" player="` + model.ID + `" class="btn btn-info btn-xs" onfocus="this.blur();" onclick="">View</button>`)
+			// button += template.HTML(`</td>`)
+			return button
+		})
+	info.AddField(lg("Last Login Date"), "lastlogindate", db.Varchar)
+	info.AddField(lg("Last Login IP"), "lastloginip", db.Varchar)
+
+	info.HideDeleteButton()
+	info.HideExportButton()
+
+	info.HideNewButton()
+	info.HideFilterButton()
+	info.HideRowSelector()
+	info.HideEditButton()
+	info.HideDetailButton()
+
+	info.SetTable("Agents")
+
+	return
+}
+
+// added by jaison
+func (s *SystemTable) GetSubAccountsTable(ctx *context.Context) (playerTable Table) {
+	fmt.Println("plugins.modules.table.generator.go GetSubAccountsTable")
+
+	playerTableConfig := DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver)
+
+	playerTable = NewDefaultTable(playerTableConfig)
+
+	info := playerTable.GetInfo().AddXssJsFilter().HideFilterArea()
+	info.SetSortAsc()
+
+	// #	UserName	Country	Score	PlayerStatus	DisOnlineDay	Name	Operation
+	info.AddField("#", "id", db.Int)
+	info.AddField(lg("Login Name"), "accountname", db.Varchar)
+	info.AddField(lg("Nickname"), "nickname", db.Varchar)
+	info.AddField(lg("Phone"), "tel", db.Varchar)
+	info.AddField(lg("Edit"), "edit", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			return template.HTML("<a><span>Edit</span></a>")
+		})
+	info.AddField(lg("password"), "password", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			return template.HTML("<a><span>Password</span></a>")
+		})
+	info.AddField(lg("Lock"), "state", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(``)
+
+			if model.Row[`state`].(int64) == 1 {
+				tag += template.HTML(`NO`)
+			} else if model.Row[`state`].(int64) == 0 {
+				tag += template.HTML(`YES`)
+			} else if model.Row[`state`].(int64) == -1 {
+				tag += template.HTML(`YES`)
+			}
+
+			return tag
+		})
+	info.AddField(lg("Account"), "level", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			strLevel := strconv.FormatInt(model.Row[`level`].(int64), 3)
+			if len(strLevel) < 5 {
+				gaps := 5 - len(strLevel)
+
+				for i := 0; i < gaps; i++ {
+					strLevel = "0" + strLevel
+				}
+			}
+
+			if strLevel[0] == '0' {
+				return template.HTML("Off")
+			}
+
+			if strLevel[0] == '1' {
+				return template.HTML("View")
+			}
+
+			if strLevel[0] == '2' {
+				return template.HTML("Edit")
+			}
+
+			return template.HTML(`Undefined`)
+		})
+	info.AddField(lg("Member"), "member", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			strLevel := strconv.FormatInt(model.Row[`level`].(int64), 3)
+			if len(strLevel) < 5 {
+				gaps := 5 - len(strLevel)
+
+				for i := 0; i < gaps; i++ {
+					strLevel = "0" + strLevel
+				}
+			}
+
+			if strLevel[1] == '0' {
+				return template.HTML("Off")
+			}
+
+			if strLevel[1] == '1' {
+				return template.HTML("View")
+			}
+
+			if strLevel[1] == '2' {
+				return template.HTML("Edit")
+			}
+
+			return template.HTML(`Undefined`)
+		})
+	info.AddField(lg("Stock"), "stock", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			strLevel := strconv.FormatInt(model.Row[`level`].(int64), 3)
+			if len(strLevel) < 5 {
+				gaps := 5 - len(strLevel)
+
+				for i := 0; i < gaps; i++ {
+					strLevel = "0" + strLevel
+				}
+			}
+
+			if strLevel[2] == '0' {
+				return template.HTML("Off")
+			}
+
+			if strLevel[2] == '1' {
+				return template.HTML("View")
+			}
+
+			if strLevel[2] == '2' {
+				return template.HTML("Edit")
+			}
+
+			return template.HTML(`Undefined`)
+		})
+	info.AddField(lg("Report"), "report", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			strLevel := strconv.FormatInt(model.Row[`level`].(int64), 3)
+			if len(strLevel) < 5 {
+				gaps := 5 - len(strLevel)
+
+				for i := 0; i < gaps; i++ {
+					strLevel = "0" + strLevel
+				}
+			}
+
+			if strLevel[3] == '0' {
+				return template.HTML("Off")
+			}
+
+			if strLevel[3] == '1' {
+				return template.HTML("View")
+			}
+
+			if strLevel[3] == '2' {
+				return template.HTML("Edit")
+			}
+
+			return template.HTML(`Undefined`)
+		})
+	info.AddField(lg("Payment"), "payment", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			strLevel := strconv.FormatInt(model.Row[`level`].(int64), 3)
+			if len(strLevel) < 5 {
+				gaps := 5 - len(strLevel)
+
+				for i := 0; i < gaps; i++ {
+					strLevel = "0" + strLevel
+				}
+			}
+
+			if strLevel[4] == '0' {
+				return template.HTML("Off")
+			}
+
+			if strLevel[4] == '1' {
+				return template.HTML("View")
+			}
+
+			if strLevel[4] == '2' {
+				return template.HTML("Edit")
+			}
+
+			return template.HTML(`Undefined`)
+		})
+	info.AddField(lg("Last Login Date"), "lastlogindate", db.Decimal)
+	info.AddField(lg("Last Login IP"), "lastloginip", db.Decimal)
+
+	info.HideDeleteButton()
+	info.HideExportButton()
+
+	info.HideNewButton()
+	info.HideFilterButton()
+	info.HideRowSelector()
+	info.HideEditButton()
+	info.HideDetailButton()
+
+	info.SetTable("SubAccounts")
 	return
 }
 
@@ -1028,6 +1292,127 @@ func (s *SystemTable) GetLoginLogs(ctx *context.Context) (loginLogsTable Table) 
 }
 
 // added by jaison
+func (s *SystemTable) GetMemberOutstandings(ctx *context.Context) (reportTable Table) {
+	fmt.Println("plugins.modules.table.generator.go GetMemberOutstandings")
+
+	reportTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
+
+	info := reportTable.GetInfo().AddXssJsFilter().HideFilterArea()
+
+	info.AddField("ID", "id", db.Int).FieldHide()
+	info.AddField(lg("Login Name"), "username", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+
+			tag := template.HTML("<a>" + model.Row[`Username`].(string) + "</a>")
+
+			return tag
+		})
+	info.AddField(lg("Position"), "name", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			return template.HTML(`Shareholder`)
+		})
+	info.AddField(lg("Bet"), "bet", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			betField, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`bet`]), 64)
+
+			tag := template.HTML(``)
+			if err != nil {
+				tag += template.HTML(`Failed to parse value.`)
+				return tag
+			}
+
+			tag = template.HTML(fmt.Sprintf("%.2f", betField))
+
+			return tag
+		})
+	info.AddField(lg("Win"), "win", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			winField, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`win`]), 64)
+
+			tag := template.HTML(``)
+			if err != nil {
+				tag += template.HTML(`Failed to parse value.`)
+				return tag
+			}
+
+			tag = template.HTML(fmt.Sprintf("%.2f", winField))
+
+			return tag
+		})
+	info.AddField(lg("Turnover"), "turnover", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			reportField, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`turnover`]), 64)
+
+			tag := template.HTML(``)
+
+			if err != nil {
+				tag += template.HTML(`Failed to parse value.`)
+				return tag
+			}
+
+			tag = template.HTML(fmt.Sprintf("%.2f", reportField))
+			return tag
+		})
+
+	info.SetTable("Reports").
+		SetSortAsc()
+	return
+}
+
+// added by jaison
+func (s *SystemTable) GetAgentScoresTable(ctx *context.Context) (agentTable Table) {
+	fmt.Println("plugins.modules.table.generator.go GetAgentScoresTable")
+
+	agentTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
+
+	info := agentTable.GetInfo().AddXssJsFilter().HideFilterArea()
+
+	info.AddField("ID", "id", db.Int).FieldHide()
+	info.AddField(lg("Login Name"), "username", db.Varchar)
+	info.AddField(lg("Nickname"), "name", db.Varchar)
+	info.AddField(lg("Level"), "level", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			return template.HTML(`Shareholder`)
+		})
+	// info.AddField(lg("Currency"), "setscore", db.Decimal).
+	// 	FieldDisplay(func(model types.FieldModel) interface{} {
+	// 		tag := template.HTML(model.Row[`username`].(string))
+	// 		return tag
+	// 	})
+	info.AddField(lg("Credit"), "score", db.Decimal)
+	info.AddField(lg("Deposit"), "deposit", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			buttons := template.HTML(`<div align="center">`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" title="" onfocus="this.blur();" onclick="document.location='/scorelog/agentscores/EditScore?id=` + model.ID + `'" style="width:40px;"> + </button>`)
+			buttons += template.HTML(`</div>`)
+
+			return buttons
+		})
+	info.AddField(lg("Withdrawal"), "withdrawl", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			buttons := template.HTML(`<div align="center">`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" title="" onfocus="this.blur();" onclick="document.location='/scorelog/agentscores/EditScore?id=` + model.ID + `'" style="width:40px;"> - </button>`)
+			buttons += template.HTML(`</div>`)
+
+			return buttons
+		})
+	info.AddField(lg("Detail"), "detail", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			buttons := template.HTML(`<div align="center">`)
+			buttons += template.HTML(`<button type="button" class="btn btn-info btn-xs" title="" onfocus="this.blur();" onclick="document.location='/scorelog/agentscores/Detail?id=` + model.ID + `'" style="width:50px;"> Detail </button>`)
+			buttons += template.HTML(`</div>`)
+
+			return buttons
+		})
+	info.AddField(lg("Last login date"), "lastlogin", db.Varchar)
+	info.AddField(lg("Last login IP"), "lastloginip", db.Varchar)
+
+	info.SetTable("Agents").
+		SetSortAsc()
+	return
+}
+
+// added by jaison
 func (s *SystemTable) GetScoreLogs(ctx *context.Context) (scoreLogsTable Table) {
 	fmt.Println("plugins.modules.table.generator.go GetScoreLogs")
 
@@ -1037,13 +1422,33 @@ func (s *SystemTable) GetScoreLogs(ctx *context.Context) (scoreLogsTable Table) 
 
 	// Account UserName SetScore BeforeScore AfterScore IP DateTime
 	info.AddField("#", "id", db.Int).FieldHide()
-	info.AddField(lg("Account"), "account", db.Varchar)
-	info.AddField(lg("Username"), "username", db.Varchar)
-	info.AddField(lg("SetScore"), "setscore", db.Decimal)
-	info.AddField(lg("BeforeScore"), "beforescore", db.Decimal)
-	info.AddField(lg("AfterScore"), "afterscore", db.Decimal)
-	info.AddField(lg("IP"), "ip", db.Varchar)
-	info.AddField(lg("DateTime"), "datetime", db.Datetime)
+	info.AddField(lg("Login Name"), "username", db.Varchar)
+	// info.AddField(lg("Currency"), "setscore", db.Decimal).
+	// 	FieldDisplay(func(model types.FieldModel) interface{} {
+	// 		tag := template.HTML(model.Row[`username`].(string))
+	// 		return tag
+	// 	})
+	info.AddField(lg("Action"), "action", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			tag := template.HTML(``)
+			scoredValue, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`setscore`]), 64)
+
+			if err != nil {
+				tag = template.HTML(err.Error())
+			} else if scoredValue > 0 {
+				tag = template.HTML(`DEPOSIT`)
+			} else if scoredValue < 0 {
+				tag = template.HTML(`WITHDRAW`)
+			}
+
+			return tag
+		})
+	info.AddField(lg("Amount"), "setscore", db.Decimal)
+	info.AddField(lg("Request By"), "account", db.Varchar)
+	// info.AddField(lg("BeforeScore"), "beforescore", db.Decimal)
+	// info.AddField(lg("AfterScore"), "afterscore", db.Decimal)
+	// info.AddField(lg("IP"), "ip", db.Varchar)
+	info.AddField(lg("Date"), "datetime", db.Datetime)
 
 	info.SetTable("ScoreLogs").
 		SetSortField("datetime").
@@ -1124,19 +1529,19 @@ func (s *SystemTable) GetBonusLogs(ctx *context.Context) (bonusLogsTable Table) 
 }
 
 // added by jaison
-func (s *SystemTable) GetPlayerReportLogs(ctx *context.Context) (bonusLogsTable Table) {
-	fmt.Println("plugins.modules.table.generator.go GetBonusLogs")
+func (s *SystemTable) GetRedPacketLogs(ctx *context.Context) (redPacketLogsTable Table) {
+	fmt.Println("plugins.modules.table.generator.go GetRedPacketLogs")
 
-	bonusLogsTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
+	redPacketLogsTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
 
-	info := bonusLogsTable.GetInfo().AddXssJsFilter().HideFilterArea()
+	info := redPacketLogsTable.GetInfo().AddXssJsFilter().HideFilterArea()
 
-	// #	Agent Name	Bonus	Processed	RegDate	Game Name	Player Name	Type	ProcessedDate
+	// #	Agent Name	RedPacket	Comment	Processed	RegDate		Player Name		ProcessedDate
 	info.AddField("#", "id", db.Int).FieldHide()
 	info.AddField(lg("Agent Name"), "agentname", db.Varchar)
-	info.AddField(lg("Bonus"), "bonus", db.Decimal).
+	info.AddField(lg("RedPacket"), "redpacket", db.Decimal).
 		FieldDisplay(func(model types.FieldModel) interface{} {
-			bonus, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`bonus`]), 64)
+			redpacket, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`redpacket`]), 64)
 
 			tag := template.HTML(``)
 			if err != nil {
@@ -1144,10 +1549,11 @@ func (s *SystemTable) GetPlayerReportLogs(ctx *context.Context) (bonusLogsTable 
 				return tag
 			}
 
-			tag = template.HTML(fmt.Sprintf("%.2f", bonus))
+			tag = template.HTML(fmt.Sprintf("%.2f", redpacket))
 
 			return tag
 		})
+	info.AddField(lg("Comment"), "comment", db.Varchar)
 	info.AddField(lg("Processed"), "processed", db.Integer).
 		FieldDisplay(func(model types.FieldModel) interface{} {
 			tag := template.HTML(``)
@@ -1161,31 +1567,67 @@ func (s *SystemTable) GetPlayerReportLogs(ctx *context.Context) (bonusLogsTable 
 			return tag
 		})
 	info.AddField(lg("RegDate"), "regdate", db.Datetime)
-	info.AddField(lg("Game Name"), "gamename", db.Varchar)
-	info.AddField(lg("Player Name"), "playerid", db.Integer)
-	info.AddField(lg("Type"), "bonustype", db.Integer).
+	info.AddField(lg("Player Name"), "playername", db.Varchar)
+	info.AddField(lg("ProcessedDate"), "processeddate", db.Varchar)
+
+	info.SetTable("RedPacketLogs")
+	// SetHeader(`
+	// 	<h3 class="box-title text-bold">
+	// 		<span id="td_currMoney" class="badge bg-yellow"></span>
+	// 		<span id="s_tip1" class="text-sm text-success" style=""></span>
+	// 	</h3>
+	// 	<div class="box-tools pull-right">
+	// 		<button data-widget="collapse" class="btn btn-box-tool" type="button"><i class="fa fa-minus"></i></button>
+	// 	</div>`)
+
+	// SetSortField("datetime").
+	// SetSortDesc()
+
+	return
+}
+
+// added by jaison
+func (s *SystemTable) GetPlayerReportLogs(ctx *context.Context) (playerReportLogsTable Table) {
+	fmt.Println("plugins.modules.table.generator.go GetPlayerReportLogs")
+
+	playerReportLogsTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
+
+	info := playerReportLogsTable.GetInfo().AddXssJsFilter().HideFilterArea()
+
+	// #	DateTime TotalActivePlayer	WinPlayers	WinAmount	LosePlayers	LoseAmount
+	info.AddField("#", "id", db.Bigint).FieldHide()
+	info.AddField(lg("DateTime"), "datetime", db.Datetime)
+	info.AddField(lg("TotalActivePlayer"), "totalplayers", db.Integer)
+	info.AddField(lg("WinPlayers"), "winplayers", db.Integer)
+	info.AddField(lg("WinAmount"), "winamount", db.Decimal).
 		FieldDisplay(func(model types.FieldModel) interface{} {
+			bonus, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`bonus`]), 64)
+
 			tag := template.HTML(``)
-
-			if model.Value == "0" {
-				tag += template.HTML(`Random`)
+			if err != nil {
+				tag += template.HTML(`Failed to parse value.`)
 				return tag
 			}
 
-			if model.Value == "1" {
-				tag += template.HTML(`Minor`)
-				return tag
-			}
+			tag = template.HTML(fmt.Sprintf("%.2f", bonus))
 
-			if model.Value == "2" {
-				tag += template.HTML(`Major`)
-				return tag
-			}
-
-			tag += template.HTML(`Undefined`)
 			return tag
 		})
-	info.AddField(lg("ProcessedDate"), "processeddate", db.Varchar)
+	info.AddField(lg("LosePlayers"), "lostplayers", db.Integer)
+	info.AddField(lg("LoseAmount"), "lostamount", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			bonus, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`bonus`]), 64)
+
+			tag := template.HTML(``)
+			if err != nil {
+				tag += template.HTML(`Failed to parse value.`)
+				return tag
+			}
+
+			tag = template.HTML(fmt.Sprintf("%.2f", bonus))
+
+			return tag
+		})
 
 	info.SetTable("BonusLogs").
 		// SetSortField("datetime").
@@ -1195,19 +1637,24 @@ func (s *SystemTable) GetPlayerReportLogs(ctx *context.Context) (bonusLogsTable 
 }
 
 // added by jaison
-func (s *SystemTable) GetTopWinPlayers(ctx *context.Context) (bonusLogsTable Table) {
-	fmt.Println("plugins.modules.table.generator.go GetBonusLogs")
+func (s *SystemTable) GetTopWinPlayers(ctx *context.Context) (topWinUsers Table) {
+	fmt.Println("plugins.modules.table.generator.go GetTopWinPlayers")
 
-	bonusLogsTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
+	topWinUsers = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
 
-	info := bonusLogsTable.GetInfo().AddXssJsFilter().HideFilterArea()
+	info := topWinUsers.GetInfo().AddXssJsFilter().HideFilterArea()
 
-	// #	Agent Name	Bonus	Processed	RegDate	Game Name	Player Name	Type	ProcessedDate
+	// username Bet Win Report
 	info.AddField("#", "id", db.Int).FieldHide()
-	info.AddField(lg("Agent Name"), "agentname", db.Varchar)
-	info.AddField(lg("Bonus"), "bonus", db.Decimal).
+	info.AddField(lg("UserName"), "username", db.Varchar).
 		FieldDisplay(func(model types.FieldModel) interface{} {
-			bonus, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`bonus`]), 64)
+			tag := template.HTML(model.Row[`username`].(string))
+
+			return tag
+		})
+	info.AddField(lg("Bet"), "Bet", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			bet, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`Bet`]), 64)
 
 			tag := template.HTML(``)
 			if err != nil {
@@ -1215,70 +1662,65 @@ func (s *SystemTable) GetTopWinPlayers(ctx *context.Context) (bonusLogsTable Tab
 				return tag
 			}
 
-			tag = template.HTML(fmt.Sprintf("%.2f", bonus))
+			tag = template.HTML(fmt.Sprintf("%.2f", bet))
 
 			return tag
 		})
-	info.AddField(lg("Processed"), "processed", db.Integer).
+	info.AddField(lg("Win"), "Win", db.Decimal).
 		FieldDisplay(func(model types.FieldModel) interface{} {
-			tag := template.HTML(``)
+			win, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`Win`]), 64)
 
-			if model.Value == "0" {
-				tag += template.HTML(`Not Processed`)
-			} else {
-				tag += template.HTML(`Processed`)
+			tag := template.HTML(``)
+			if err != nil {
+				tag += template.HTML(`Failed to parse value.`)
+				return tag
 			}
+
+			tag = template.HTML(fmt.Sprintf("%.2f", win))
 
 			return tag
 		})
-	info.AddField(lg("RegDate"), "regdate", db.Datetime)
-	info.AddField(lg("Game Name"), "gamename", db.Varchar)
-	info.AddField(lg("Player Name"), "playerid", db.Integer)
-	info.AddField(lg("Type"), "bonustype", db.Integer).
+	info.AddField(lg("Report"), "Report", db.Decimal).
 		FieldDisplay(func(model types.FieldModel) interface{} {
+			report, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`Report`]), 64)
+
 			tag := template.HTML(``)
-
-			if model.Value == "0" {
-				tag += template.HTML(`Random`)
+			if err != nil {
+				tag += template.HTML(`Failed to parse value.`)
 				return tag
 			}
 
-			if model.Value == "1" {
-				tag += template.HTML(`Minor`)
-				return tag
-			}
+			tag = template.HTML(fmt.Sprintf("%.2f", report))
 
-			if model.Value == "2" {
-				tag += template.HTML(`Major`)
-				return tag
-			}
-
-			tag += template.HTML(`Undefined`)
 			return tag
 		})
-	info.AddField(lg("ProcessedDate"), "processeddate", db.Varchar)
 
 	info.SetTable("BonusLogs").
-		// SetSortField("datetime").
-		SetSortDesc()
+		SetSortField("Report").
+		SetSortAsc()
 
 	return
 }
 
 // added by jaison
-func (s *SystemTable) GetTopLostPlayers(ctx *context.Context) (bonusLogsTable Table) {
-	fmt.Println("plugins.modules.table.generator.go GetBonusLogs")
+func (s *SystemTable) GetTopLostPlayers(ctx *context.Context) (topLoseUsers Table) {
+	fmt.Println("plugins.modules.table.generator.go GetTopLostPlayers")
 
-	bonusLogsTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
+	topLoseUsers = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
 
-	info := bonusLogsTable.GetInfo().AddXssJsFilter().HideFilterArea()
+	info := topLoseUsers.GetInfo().AddXssJsFilter().HideFilterArea()
 
-	// #	Agent Name	Bonus	Processed	RegDate	Game Name	Player Name	Type	ProcessedDate
+	// username Bet Win Report
 	info.AddField("#", "id", db.Int).FieldHide()
-	info.AddField(lg("Agent Name"), "agentname", db.Varchar)
-	info.AddField(lg("Bonus"), "bonus", db.Decimal).
+	info.AddField(lg("UserName"), "username", db.Varchar).
 		FieldDisplay(func(model types.FieldModel) interface{} {
-			bonus, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`bonus`]), 64)
+			tag := template.HTML(model.Row[`username`].(string))
+
+			return tag
+		})
+	info.AddField(lg("Bet"), "Bet", db.Decimal).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			bet, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`Bet`]), 64)
 
 			tag := template.HTML(``)
 			if err != nil {
@@ -1286,51 +1728,41 @@ func (s *SystemTable) GetTopLostPlayers(ctx *context.Context) (bonusLogsTable Ta
 				return tag
 			}
 
-			tag = template.HTML(fmt.Sprintf("%.2f", bonus))
+			tag = template.HTML(fmt.Sprintf("%.2f", bet))
 
 			return tag
 		})
-	info.AddField(lg("Processed"), "processed", db.Integer).
+	info.AddField(lg("Win"), "Win", db.Decimal).
 		FieldDisplay(func(model types.FieldModel) interface{} {
-			tag := template.HTML(``)
+			win, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`Win`]), 64)
 
-			if model.Value == "0" {
-				tag += template.HTML(`Not Processed`)
-			} else {
-				tag += template.HTML(`Processed`)
+			tag := template.HTML(``)
+			if err != nil {
+				tag += template.HTML(`Failed to parse value.`)
+				return tag
 			}
+
+			tag = template.HTML(fmt.Sprintf("%.2f", win))
 
 			return tag
 		})
-	info.AddField(lg("RegDate"), "regdate", db.Datetime)
-	info.AddField(lg("Game Name"), "gamename", db.Varchar)
-	info.AddField(lg("Player Name"), "playerid", db.Integer)
-	info.AddField(lg("Type"), "bonustype", db.Integer).
+	info.AddField(lg("Report"), "Report", db.Decimal).
 		FieldDisplay(func(model types.FieldModel) interface{} {
+			report, err := strconv.ParseFloat(ConvertInterface_A(model.Row[`Report`]), 64)
+
 			tag := template.HTML(``)
-
-			if model.Value == "0" {
-				tag += template.HTML(`Random`)
+			if err != nil {
+				tag += template.HTML(`Failed to parse value.`)
 				return tag
 			}
 
-			if model.Value == "1" {
-				tag += template.HTML(`Minor`)
-				return tag
-			}
+			tag = template.HTML(fmt.Sprintf("%.2f", report))
 
-			if model.Value == "2" {
-				tag += template.HTML(`Major`)
-				return tag
-			}
-
-			tag += template.HTML(`Undefined`)
 			return tag
 		})
-	info.AddField(lg("ProcessedDate"), "processeddate", db.Varchar)
 
 	info.SetTable("BonusLogs").
-		// SetSortField("datetime").
+		SetSortField("Report").
 		SetSortDesc()
 
 	return

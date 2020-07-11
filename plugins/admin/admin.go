@@ -42,21 +42,27 @@ func (admin *Admin) InitPlugin(services service.List) {
 		"playerslist": st.GetPlayersTable,
 
 		// search
-		"playeragentlist": st.GetPlayerAgentTable,
-		"playerlist":      st.GetPlayerTable,
-		"agentlist":       st.GetAgentTable,
+		"playeragentlist":  st.GetPlayerAgentTable,
+		"playerlist":       st.GetPlayerTable,
+		"agentlist":        st.GetAgentTable,
+		"shareholderslist": st.GetShareholdersTable,
+		"subaccountslist":  st.GetSubAccountsTable,
 
 		"ingameusers":  st.GetInGamePlayers,
 		"winningusers": st.GetWinningPlayers,
-		"loginlogs":    st.GetLoginLogs,
+		"agentscores":  st.GetAgentScoresTable,
 		"scorelogs":    st.GetScoreLogs,
 		"bonuslogs":    st.GetBonusLogs,
+		"loginlogs":    st.GetLoginLogs,
 
-		"playerreportlogs":  st.GetPlayerReportLogs,
-		"top100winplayers":  st.GetTopWinPlayers,
-		"top100lostplayers": st.GetTopLostPlayers,
+		"redpacketlogs": st.GetRedPacketLogs,
 
-		"agentreportlogs": st.GetAgentReportLogs,
+		"playerreportlogs": st.GetPlayerReportLogs,
+		"topwinplayers":    st.GetTopWinPlayers,
+		"toplostplayers":   st.GetTopLostPlayers,
+
+		"memberoutstanding": st.GetMemberOutstandings,
+		"agentreportlogs":   st.GetAgentReportLogs,
 
 		"gameconfigs": st.GetGameConfigs,
 	})

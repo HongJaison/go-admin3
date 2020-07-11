@@ -183,6 +183,9 @@ type PaginatorAttribute interface {
 	SetUrl(value string) PaginatorAttribute
 	SetExtraInfo(value template.HTML) PaginatorAttribute
 	GetContent() template.HTML
+
+	// added by jaison
+	GetUrl() string
 }
 
 type TabsAttribute interface {

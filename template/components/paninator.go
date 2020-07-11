@@ -1,8 +1,9 @@
 package components
 
 import (
-	"github.com/HongJaison/go-admin3/template/types"
 	"html/template"
+
+	"github.com/HongJaison/go-admin3/template/types"
 )
 
 type PaginatorAttribute struct {
@@ -90,4 +91,9 @@ func (compo *PaginatorAttribute) SetUrl(value string) types.PaginatorAttribute {
 
 func (compo *PaginatorAttribute) GetContent() template.HTML {
 	return ComposeHtml(compo.TemplateList, *compo, "paginator")
+}
+
+// added by jaison
+func (compo *PaginatorAttribute) GetUrl() string {
+	return compo.Url
 }

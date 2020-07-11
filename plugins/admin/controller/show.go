@@ -44,23 +44,9 @@ func (h *Handler) ShowManagementTable(ctx *context.Context) {
 	// buf2 := h.showTable(ctx, "playerslist", params2, panel2)
 
 	title := template2.HTML(`
-		<h1 class="hidden-xs">
-			Account List
-			<small>
-				<a href="#" name="reload_all" target="_self" onclick="javascript:reloadList();">
-					<i class="fa fa-refresh"></i>
-					Refresh
-				</a>
-			</small>
-		</h1>
+		<h1 class="hidden-xs">Account List</h1>
 		<ol class="breadcrumb hidden-md hidden-lg hidden-sm">
-			<li>
-				Account List&nbsp;&nbsp;&nbsp;
-				<a href="#" target="_self" onclick="" name="reload_all">
-					<i class="fa fa-refresh"></i>
-					Refresh
-				</a>
-			</li>
+			<li>Account List&nbsp;&nbsp;&nbsp;</li>
 		</ol>`)
 
 	prefixes := []string{"agentslist", "playerslist"}
@@ -394,6 +380,184 @@ func (h *Handler) showTable(ctx *context.Context, prefix string, params paramete
 		Description: template2.HTML(panelInfo.Description),
 		Title:       modules.AorBHTML(isNotIframe, template2.HTML(panelInfo.Title), ""),
 	}, params.Animation)
+}
+
+// added by jaison
+func (h *Handler) getTableContent(ctx *context.Context, prefix string, params parameter.Parameters, panel table.Table) template2.HTML {
+
+	panel, panelInfo, urls, err := h.showTableData(ctx, prefix, params, panel, "")
+	if err != nil {
+		return template2.HTML(``)
+	}
+	editUrl, newUrl, deleteUrl, exportUrl, detailUrl, infoUrl,
+		updateUrl := urls[0], urls[1], urls[2], urls[3], urls[4], urls[5], urls[6]
+	user := auth.Auth(ctx)
+
+	var (
+		body       template2.HTML
+		dataTable  types.DataTableAttribute
+		info       = panel.GetInfo()
+		actionBtns = info.Action
+		actionJs   template2.JS
+		allBtns    = make(types.Buttons, 0)
+	)
+
+	for _, b := range info.Buttons {
+		if b.URL() == "" || b.METHOD() == "" || user.CheckPermissionByUrlMethod(b.URL(), b.METHOD(), url.Values{}) {
+			allBtns = append(allBtns, b)
+		}
+	}
+
+	btns, btnsJs := allBtns.Content()
+
+	allActionBtns := make(types.Buttons, 0)
+
+	for _, b := range info.ActionButtons {
+		if b.URL() == "" || b.METHOD() == "" || user.CheckPermissionByUrlMethod(b.URL(), b.METHOD(), url.Values{}) {
+			allActionBtns = append(allActionBtns, b)
+		}
+	}
+
+	if actionBtns == template.HTML("") && len(allActionBtns) > 0 {
+
+		ext := template.HTML("")
+		if deleteUrl != "" {
+			ext = html.LiEl().SetClass("divider").Get()
+			allActionBtns = append([]types.Button{types.GetActionButton(language.GetFromHtml("delete"),
+				types.NewDefaultAction(`data-id='{{.Id}}' style="cursor: pointer;"`,
+					ext, "", ""), "grid-row-delete")}, allActionBtns...)
+		}
+		ext = template.HTML("")
+		if detailUrl != "" {
+			if editUrl == "" && deleteUrl == "" {
+				ext = html.LiEl().SetClass("divider").Get()
+			}
+			allActionBtns = append([]types.Button{types.GetActionButton(language.GetFromHtml("detail"),
+				action.Jump(detailUrl+"&"+constant.DetailPKKey+"={{.Id}}", ext))}, allActionBtns...)
+		}
+		if editUrl != "" {
+			if detailUrl == "" && deleteUrl == "" {
+				ext = html.LiEl().SetClass("divider").Get()
+			}
+			allActionBtns = append([]types.Button{types.GetActionButton(language.GetFromHtml("edit"),
+				action.Jump(editUrl+"&"+constant.EditPKKey+"={{.Id}}", ext))}, allActionBtns...)
+		}
+
+		var content template2.HTML
+		content, actionJs = allActionBtns.Content()
+
+		actionBtns = html.Div(
+			html.A(icon.Icon(icon.EllipsisV),
+				html.M{"color": "#676565"},
+				html.M{"class": "dropdown-toggle", "href": "#", "data-toggle": "dropdown"},
+			)+html.Ul(content,
+				html.M{"min-width": "20px !important", "left": "-32px", "overflow": "hidden"},
+				html.M{"class": "dropdown-menu", "role": "menu", "aria-labelledby": "dLabel"}),
+			html.M{"text-align": "center"}, html.M{"class": "dropdown"})
+	}
+
+	if info.TabGroups.Valid() {
+
+		dataTable = aDataTable().
+			SetThead(panelInfo.Thead).
+			SetDeleteUrl(deleteUrl).
+			SetNewUrl(newUrl).
+			SetExportUrl(exportUrl)
+
+		var (
+			tabsHtml    = make([]map[string]template2.HTML, len(info.TabHeaders))
+			infoListArr = panelInfo.InfoList.GroupBy(info.TabGroups)
+			theadArr    = panelInfo.Thead.GroupBy(info.TabGroups)
+		)
+		for key, header := range info.TabHeaders {
+			tabsHtml[key] = map[string]template2.HTML{
+				"title": template2.HTML(header),
+				"content": aDataTable().
+					SetInfoList(infoListArr[key]).
+					SetInfoUrl(infoUrl).
+					SetButtons(btns).
+					SetActionJs(btnsJs + actionJs).
+					SetHasFilter(len(panelInfo.FilterFormData) > 0).
+					SetAction(actionBtns).
+					SetIsTab(key != 0).
+					SetPrimaryKey(panel.GetPrimaryKey().Name).
+					SetThead(theadArr[key]).
+					SetHideRowSelector(info.IsHideRowSelector).
+					SetLayout(info.TableLayout).
+					SetExportUrl(exportUrl).
+					SetNewUrl(newUrl).
+					SetSortUrl(params.GetFixedParamStrWithoutSort()).
+					SetEditUrl(editUrl).
+					SetUpdateUrl(updateUrl).
+					SetDetailUrl(detailUrl).
+					SetDeleteUrl(deleteUrl).
+					GetContent(),
+			}
+		}
+		body = aTab().SetData(tabsHtml).GetContent()
+	} else {
+		dataTable = aDataTable().
+			SetInfoList(panelInfo.InfoList).
+			SetInfoUrl(infoUrl).
+			SetButtons(btns).
+			SetLayout(info.TableLayout).
+			SetActionJs(btnsJs + actionJs).
+			SetAction(actionBtns).
+			SetHasFilter(len(panelInfo.FilterFormData) > 0).
+			SetPrimaryKey(panel.GetPrimaryKey().Name).
+			SetThead(panelInfo.Thead).
+			SetExportUrl(exportUrl).
+			SetHideRowSelector(info.IsHideRowSelector).
+			SetHideFilterArea(info.IsHideFilterArea).
+			SetNewUrl(newUrl).
+			SetEditUrl(editUrl).
+			SetSortUrl(params.GetFixedParamStrWithoutSort()).
+			SetUpdateUrl(updateUrl).
+			SetDetailUrl(detailUrl).
+			SetDeleteUrl(deleteUrl)
+		body = dataTable.GetContent()
+	}
+
+	isNotIframe := ctx.Query(constant.IframeKey) != "true"
+
+	paginator := panelInfo.Paginator
+
+	if !isNotIframe {
+		paginator = paginator.SetHideEntriesInfo()
+	}
+
+	boxModel := aBox().
+		SetBody(body).
+		SetNoPadding().
+		SetHeader(dataTable.GetDataTableHeader() + info.HeaderHtml).
+		WithHeadBorder().
+		SetIframeStyle(!isNotIframe).
+		SetFooter(paginator.GetContent() + info.FooterHtml)
+
+	if len(panelInfo.FilterFormData) > 0 {
+		boxModel = boxModel.SetSecondHeaderClass("filter-area").
+			SetSecondHeader(aForm().
+				SetContent(panelInfo.FilterFormData).
+				SetPrefix(h.config.PrefixFixSlash()).
+				SetInputWidth(info.FilterFormInputWidth).
+				SetHeadWidth(info.FilterFormHeadWidth).
+				SetMethod("get").
+				SetLayout(info.FilterFormLayout).
+				SetUrl(infoUrl). //  + params.GetFixedParamStrWithoutColumnsAndPage()
+				SetHiddenFields(map[string]string{
+					form.NoAnimationKey: "true",
+				}).
+				SetOperationFooter(filterFormFooter(infoUrl)).
+				GetContent())
+	}
+
+	content := boxModel.GetContent()
+
+	if info.Wrapper != nil {
+		content = info.Wrapper(content)
+	}
+
+	return content
 }
 
 // added by jaison
